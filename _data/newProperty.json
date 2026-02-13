@@ -1,0 +1,29 @@
+[
+  {
+    "title": "The Onyx Chalet by Keuka Lake",
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "description": "Keep it simple at this peaceful and centrally-located place. Our Chalet is a newly remodeled house on the edge of Penn Yan within sight of Keuka Lake. Seasonal lake views and beautiful sunset skies. A stones throw from Morgan Marine and Red Jacket park. Walking distance from restaurants and a public beach. Master bedroom on main floor with queen bed and access to bathroom. Two bedrooms upstairs and large bathroom. Comfortably sleeps 6-8 people. sunset views.",
+    "amenities": ["WiFi", "Kitchen", "Air Conditioning", "Washer", "Dock"],
+    "features": ["Waterfront", "Pet Friendly", "Fire Pit"],
+    "ownerEmail": "nelsonmiller85@gmail.com"
+  },
+  {
+    "title": "Vineyard View Loft",
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "description": "Loft above a tasting room with vineyard and lake views.",
+    "amenities": ["WiFi", "Kitchen", "Parking"],
+    "features": ["Vineyard View", "Walk to Wineries"],
+    "ownerEmail": "dabgeneva@gmail.com"
+  },
+  {
+    "title": "Downtown Geneva Studio",
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "description": "Compact studio steps from restaurants and the lake.",
+    "amenities": ["WiFi", "Kitchenette", "Street Parking"],
+    "features": ["Walk to Downtown", "Lake Access"],
+    "ownerEmail": "nelsonmiller85@gmail.com"
+  }
+]

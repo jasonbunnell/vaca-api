@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Jason Bunnell",
+    "email": "jason.bunnell@gmail.com",
+    "role": "admin"
+  },
+  {
+    "name": "Nelson Miller",
+    "email": "nelsonmiller85@gmail.com",
+    "role": "host"
+  },
+  {
+    "name": "David Bunnell",
+    "email": "dabgeneva@gmail.com",
+    "role": "host"
+  },
+  {
+    "name": "Jan Corning",
+    "email": "jancorning@gmail.com",
+    "role": "user"
+  }
+]
