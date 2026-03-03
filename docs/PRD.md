@@ -171,6 +171,7 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
   - [ ] When a Host adds a photo, that photo should be stored in a Digital Ocean Spaces Object Storage bucket.  The endpoint for this bucket is 'https://flxvaca.nyc3.digitaloceanspaces.com' with Access Key Name 'flxvaca-2146494477', Access Key ID 'DO003HM4GT9FL9XZXRF9', with secret key '2+AgAUTZDDU+mm67LqePBr3eXm4V884GXzHV6xlW6hQ'.  These values should be stored in .ENV and not visible in the repo.  The database should have an array of images.
   - [ ] The Host should be able to select the lake they are on from a dropdown list of enum values from the database that include all the lakes in the Finger Lakes like "Seneca Lake", "Keuka Lake", etc.
   - [ ] The Host should be able to select multiple values for amenities from a check box list.  The property profile should display 10 of those amenities with a button that says "Show all [number of amenities] amenities".
+  - [ ] The Admin can Edit a property and add photos.
 
 #### Guest Reviews
 - **As a** [Guest] **I want** to leave a review of the property **so that** other potential [Guest] can better know the property and if the property profile and images accurately reflect the property.
@@ -244,6 +245,16 @@ Project folder: flxvacations.com
 - [ ] User, Host, Admin can log in
 - [ ] Host can only create, update, delete their own properties
 - [ ] Admin can CRUD any user or property
+- [ ] Add password field, update newUsers.json file with hashed password that is the first 3 letters, the first cap of first and last name and '22'.  EXAMPLE: Jason Bunnell's password would be 'JasBun22'.
+- [ ] Password should be at least 8 characters long.
+- [ ] Add functionality to reset password.
+- [ ] Add field createdAd with Date.now
+- [ ] Encrypt passwords
+- [ ] Create authentication middleware
+- [ ] Every property should be linked to at least one User ID.
+- [ ] User should be able to reset password.
+- [ ] User should be able to add a profile picture.
+- [ ] User should be able to add City, State of their location.
 
 ### 6.1 Phases
 

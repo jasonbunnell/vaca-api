@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Property = require('../models/Property');
 
 // @desc    Get all properties
@@ -12,12 +13,21 @@ exports.getProperties = async (req, res) => {
   }
 };
 
-// @desc    Get single property
-// @route   GET /api/properties/:id
+// @desc    Get single property (by slug or id)
+// @route   GET /api/properties/:slugOrId
 // @access  Public
 exports.getProperty = async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id).populate('owner', 'name email role');
+    const { id } = req.params;
+    let property = null;
+
+    // Prefer slug lookup so URLs can be /properties/:slug
+    property = await Property.findOne({ slug: id }).populate('owner', 'name email role');
+
+    // Fallback to ObjectId for existing ID-based URLs
+    if (!property && mongoose.Types.ObjectId.isValid(id)) {
+      property = await Property.findById(id).populate('owner', 'name email role');
+    }
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }

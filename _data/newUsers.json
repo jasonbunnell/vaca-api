@@ -1,21 +1,25 @@
 [
   {
-    "name": "Jason Bunnell",
+    "firstName": "Jason",
+    "lastName": "Bunnell",
     "email": "jason.bunnell@gmail.com",
     "role": "admin"
   },
   {
-    "name": "Nelson Miller",
+    "firstName": "Nelson",
+    "lastName": "Miller",
     "email": "nelsonmiller85@gmail.com",
     "role": "host"
   },
   {
-    "name": "David Bunnell",
+    "firstName": "David",
+    "lastName": "Bunnell",
     "email": "dabgeneva@gmail.com",
     "role": "host"
   },
   {
-    "name": "Jan Corning",
+    "firstName": "Jan",
+    "lastName": "Corning",
     "email": "jancorning@gmail.com",
     "role": "user"
   }

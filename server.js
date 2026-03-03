@@ -2,10 +2,10 @@ const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
-// Load .env from config/ if present, otherwise from project root
+// Load .env: config/ first (dev defaults), then root (server .env wins via override)
 const configEnv = path.join(__dirname, 'config', '.env');
 require('dotenv').config({ path: configEnv });
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const connectDB = require('./config/db');
 

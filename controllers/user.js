@@ -27,12 +27,26 @@ exports.getUser = async (req, res) => {
   }
 };
 
-// @desc    Create user
+// @desc    Create user (public registration)
 // @route   POST /api/users
 // @access  Public (Phase 1; Phase 2: register flow)
 exports.createUser = async (req, res) => {
   try {
-    const user = await User.create(req.body);
+    const { firstName, lastName, email, phone, password, role } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ error: 'First name, last name, email, and password are required.' });
+    }
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
+      email,
+      phone,
+      password,
+      role: role || 'user',
+    });
     res.status(201).json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
