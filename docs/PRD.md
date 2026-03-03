@@ -105,12 +105,12 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
 
 | Layer | Choice | Notes |
 |-------|--------|--------|
-| Runtime / language | | |
-| Framework | | |
-| Data store | | |
+| Runtime / language | JavaScript | |
+| Framework | Vue / Nuxt | |
+| Data store | MongoDB | |
 | Auth | | |
 | APIs / integrations | | |
-| Hosting / deployment | | |
+| Hosting / deployment | Digital Ocean | |
 
 ### 4.3 Data model (summary)
 
@@ -161,16 +161,27 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
   - [ ] POST property booking
   - [ ] UPDATE property availability
 
-#### [Feature area 2]
+#### Create a Property Listing page
 
-**Feature:** [Name]
+**Feature:** [Create-Listing]
 
-- **As a** [role], **I want** [action/capability] **so that** [outcome].
+- **As a** [Host], **I want** to create a property listing **so that** [Guest] can see images organized by room, learn about Host and see where they live, see key features of the property, see property type, read a description of the property, filter properties by amenities, read reviews, so location on a Google Map.
 - **Acceptance criteria:**
-  - [ ] 
-  - [ ] 
+  - [ ] Host can add pictures, organize pictures by room, add a writen description of a picture that is up to 250 characters, the picture discription should be shown when a user is looking at individual pictures and it should be in the alt value.  Guest can view pictures one of two ways.  One would be a page with a photo bar at the top with a thumbnail and room name for each room so Guest can jump to those pictures. Below that are two columns, the left has the room name like "Living room" with a brief description of that room like "Air conditioning, board games, books and reading material, TV" and the right column would be images in that room collection that are tiled and larger.  The Guest can click on an image to switch to individual photo view.  The second way the Guest can view pictures is the individual photo view.  In this view there is only one image with a black background behind the image.  Circular arrow buttons to advance or go back to prior image.  Hosts can add up to 30 images.
+  - [ ] When a Host adds a photo, that photo should be stored in a Digital Ocean Spaces Object Storage bucket.  The endpoint for this bucket is 'https://flxvaca.nyc3.digitaloceanspaces.com' with Access Key Name 'flxvaca-2146494477', Access Key ID 'DO003HM4GT9FL9XZXRF9', with secret key '2+AgAUTZDDU+mm67LqePBr3eXm4V884GXzHV6xlW6hQ'.  These values should be stored in .ENV and not visible in the repo.  The database should have an array of images.
+  - [ ] The Host should be able to select the lake they are on from a dropdown list of enum values from the database that include all the lakes in the Finger Lakes like "Seneca Lake", "Keuka Lake", etc.
+  - [ ] The Host should be able to select multiple values for amenities from a check box list.  The property profile should display 10 of those amenities with a button that says "Show all [number of amenities] amenities".
 
-#### [Feature area 3]
+#### Guest Reviews
+- **As a** [Guest] **I want** to leave a review of the property **so that** other potential [Guest] can better know the property and if the property profile and images accurately reflect the property.
+
+- **Acceptance criteria:**
+  - [ ] Guest should be able to leave a review after staying at the property.
+  - [ ] Guest reviews should be visible on the Property Profile page.  Each review should show [Guest] Profile Picture, City and State where [Guest] lives, 1 - 5 star review, Month and year the [Guest] stayed at the property, how long the [Guest] stayed at the property, the first 3 lines of the review with a "Show more" link or button.
+  - [ ] The Guest Review section should show the last 6 reviews based on Date Stayed.
+  - [ ] [Guest] may rate on a 1 - 5 scale the Cleanliness, Vibe, Check-in, Communication, Location, and Amenities.
+  - [ ] At the top of the [Guest] Rating section, there should be a bar showing averages for the Cleanliness, Vibe, Check-in, Communication, Location, and Amenities.
+  
 
 **[Repeat as needed]**
 
@@ -204,6 +215,24 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
 - [x] Set up MVC for properties
 - [x] Set up MVC for users
 
+### Front End Creation
+Project folder: flxvacations.com
+- [x] Create project folder for frontend and install Nuxt
+- [x] Install modules needed for this project including Tailwind
+- [x] Create homepage that displays properties in a grid showing image, name, price range
+- [x] Create a design using Tailwind that is similar to AirBNB
+  - Use a text logo "FLXvacations"
+  - Use a near white background
+  - User should be able to search for properties by amenities, date picker
+  - Menu should include "Homes", "Events", "Experiences", "Services"
+  - Far right should have a hamburger menu with "Log in or sign up", "Become a host"
+  - Create these pages
+    - [x] Sign up page with fields "First Name", "Last Name", "Email", "Phone", "Password"
+    - [x] Create a property listing page
+    - [x] Events page (placeholder; wire API when ready)
+      - API endpoint: https://flxcompass.com/api/v1/events
+      - Below pagination, put "See more events at FLXcompass.com"
+
 ### Test
 - [ ] Test locally
 - [ ] Fix Issues
@@ -220,11 +249,13 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
 
 | Phase | Name | Scope | Target |
 |-------|------|--------|--------|
-| 1 | Kickoff | | |
-| 2 | Test | | |
-| 3 | Deploy | | |
+| 1 | Kickoff | API scaffold, models, routes, seeder | Done |
+| 2 | Front End Creation | Nuxt app, Tailwind, homepage, pages, FLXvacations design | — |
+| 3 | Test | Test locally, fix issues, extend as needed | — |
+| 4 | Authentication & Security | Auth, roles, host/admin rules | — |
+| 5 | Deploy | Production deploy | — |
 
-### 6.2 Phase 1 — [Kickoff]
+### 6.2 Phase 1 — Kickoff
 
 **Goals:**
 - Set up files and folders
@@ -245,38 +276,81 @@ This site will be similar to AirBNB but allow the traveler to book directly.  Ea
 
 - 
 
-### 6.3 Phase 2 — [Name]
+### 6.3 Phase 2 — Front End Creation
 
 **Goals:**
-
-- 
-- 
+- Create Nuxt front end that consumes vaca-api (properties, users)
+- Tailwind-based layout similar to AirBNB: near-white background, FLXvacations text logo
+- Homepage property grid (image, name, price range); search by amenities and date
+- Nav: Homes, Events, Experiences, Services; hamburger with “Log in or sign up”, “Become a host”
+- Pages: Sign up, Create property listing, Events (flxcompass.com API)
 
 **Deliverables:**
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [x] Create project folder for frontend and install Nuxt
+- [x] Install modules (e.g. Tailwind) and configure
+- [x] Homepage: property grid (image, name, price range); search (amenities, date picker)
+- [x] Layout: FLXvacations logo, near-white background, nav (Homes, Events, Experiences, Services), hamburger (Log in or sign up, Become a host)
+- [x] Sign up page: First Name, Last Name, Email, Phone, Password
+- [x] Create a property listing page
+- [x] Events page (uses flxcompass.com API) — placeholder; wire flxcompass.com when API is ready
 
-### 6.4 Phase 3 — [Name]
+**Dependencies / blockers:**
+
+- vaca-api running (Phase 1); flxcompass.com API for Events
+
+### 6.4 Phase 3 — Test
 
 **Goals:**
-
-- 
-- 
+- Test API and front end locally
+- Fix issues and extend models/routes as needed
 
 **Deliverables:**
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [ ] Test locally
+- [ ] Fix issues
+- [ ] Extend models as needed
+- [ ] Extend routes as needed
 
-### 6.5 Dependencies (external)
+**Dependencies / blockers:**
+
+- 
+
+### 6.5 Phase 4 — Authentication & Security
+
+**Goals:**
+- User, Host, Admin can log in
+- Host can only create, update, delete their own properties
+- Admin can CRUD any user or property
+
+**Deliverables:**
+
+- [ ] Implement security (auth middleware, JWT or session)
+- [ ] User, Host, Admin can log in
+- [ ] Host can only create, update, delete their own properties
+- [ ] Admin can CRUD any user or property
+
+### 6.6 Phase 5 — Deploy
+
+**Goals:**
+- Deploy API and front end to production
+
+**Deliverables:**
+
+- [ ] Deploy API to production server
+- [ ] Deploy front end (e.g. Vercel, Netlify, or same host)
+- [ ] Configure env and domains
+
+**Dependencies / blockers:**
+
+-
+
+### 6.7 Dependencies (external)
 
 - 
 - 
 
-### 6.6 Risks & mitigations
+### 6.8 Risks & mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
