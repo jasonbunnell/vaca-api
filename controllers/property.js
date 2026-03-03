@@ -37,6 +37,18 @@ exports.getProperty = async (req, res) => {
   }
 };
 
+// @desc    Get properties for current user
+// @route   GET /api/properties/my
+// @access  Private
+exports.getMyProperties = async (req, res) => {
+  try {
+    const properties = await Property.find({ owner: req.user._id }).populate('owner', 'name email role');
+    res.json(properties);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // @desc    Create property
 // @route   POST /api/properties
 // @access  Private (host or admin)

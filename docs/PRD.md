@@ -258,16 +258,34 @@ Project folder: flxvacations.com
 - [x] When user logs in, "Log in or sign up" should be replaced by their user pic, round circle in top right, right of Become a host button.  When a user logs in, they should stay logged in unless they log out or they will remain logged in for 30 days.
 - [x] On /login page, user should be able to click an eye icon to view password.  Then a user can click eye-slash to again hide the password.
 - [x] Admin should be able to click an edit button from any Property Profile.  The edit button should only be visible to Admins and Hosts that own that profile.
+- [x] Once logged in, there should be a round user icon with their profile photo or their initials.  To the left of that should be a blue button "Become a host"
+- [x] If a user completes Become a host, their user ID is added to the owner field of Property document.
+- [x] If a user clicks their icon, the menu should include "Edit profile", "Dashboard" and "Become a host" should be "Add a property"
+
+### User Dashboard Page
+- [x] User should see a list of their properties that have a card with one photo of the property, property title, and Edit and Delete icons and name.
+
+### Admin
+- [x] Admin should be able to click an circle edit button on any Property Profile page to edit the property.
+
+### Pages - Edit Property
+
+### Services
+- [ ] Create Service Model with fields
+  - Name
+  - Description
+  - Price
+  - Requested date
 
 ### 6.1 Phases
 
 | Phase | Name | Scope | Target |
 |-------|------|--------|--------|
 | 1 | Kickoff | API scaffold, models, routes, seeder | Done |
-| 2 | Front End Creation | Nuxt app, Tailwind, homepage, pages, FLXvacations design | — |
-| 3 | Test | Test locally, fix issues, extend as needed | — |
-| 4 | Authentication & Security | Auth, roles, host/admin rules | — |
-| 5 | Deploy | Production deploy | — |
+| 2 | Front End Creation | Nuxt app, Tailwind, homepage, pages, FLXvacations design | Done |
+| 3 | Test | Test locally, fix issues, extend as needed | In progress |
+| 4 | Authentication & Security | Auth, roles, host/admin rules | Done |
+| 5 | Deploy | Production deploy | Done |
 
 ### 6.2 Phase 1 — Kickoff
 
@@ -351,13 +369,13 @@ Project folder: flxvacations.com
 
 **Deliverables:**
 
-- [ ] Deploy API to production server
-- [ ] Deploy front end (e.g. Vercel, Netlify, or same host)
-- [ ] Configure env and domains
+- [x] Deploy API to production server
+- [x] Deploy front end (e.g. Vercel, Netlify, or same host)
+- [x] Configure env and domains
 
 **Dependencies / blockers:**
 
--
+- (Updated as changes are made.)
 
 ### 6.7 Dependencies (external)
 

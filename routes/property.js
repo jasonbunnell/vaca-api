@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getProperties,
   getProperty,
+  getMyProperties,
   createProperty,
   updateProperty,
   deleteProperty,
@@ -13,6 +14,8 @@ router
   .route('/')
   .get(getProperties)
   .post(protect, authorize('host', 'admin'), createProperty);
+
+router.get('/my', protect, getMyProperties);
 
 router
   .route('/:id')
