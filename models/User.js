@@ -40,6 +40,23 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'host', 'user'],
       default: 'user',
     },
+    profileImage: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    state: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpire: { type: Date, select: false },
   },
   {
     timestamps: true,

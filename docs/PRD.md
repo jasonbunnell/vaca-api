@@ -241,21 +241,23 @@ Project folder: flxvacations.com
 - [ ] Extend routes as needed
 
 ### Authentication & Security
-- [ ] Implement security
-- [ ] User, Host, Admin can log in
-- [ ] Host can only create, update, delete their own properties
-- [ ] Admin can CRUD any user or property
+- [x] Implement security (JWT, auth middleware)
+- [x] User, Host, Admin can log in (API + login page)
+- [x] Host can only create, update, delete their own properties
+- [x] Admin can CRUD any user or property
 - [x] Add password field
-- [ ] Update newUsers.json / seeder with hashed password (pattern: first 3 letters, first cap first+last, '22'. e.g. JasBun22)
+- [x] Update newUsers.json / seeder with hashed password (pattern: first 3 letters first+last + '22'. e.g. JasBun22)
 - [x] Password should be at least 8 characters long.
-- [ ] Add functionality to reset password.
 - [x] Add field createdAd with Date.now (via timestamps: createdAt/updatedAt)
 - [x] Encrypt passwords
-- [ ] Create authentication middleware
+- [x] Create authentication middleware
 - [x] Every property should be linked to at least one User ID.
-- [ ] User should be able to reset password.
-- [ ] User should be able to add a profile picture.
-- [ ] User should be able to add City, State of their location.
+- [x] Add functionality to reset password. User should be able to reset password.
+- [x] User should be able to add a profile picture.
+- [x] User should be able to add City, State of their location.
+- [x] When user logs in, "Log in or sign up" should be replaced by their user pic, round circle in top right, right of Become a host button.  When a user logs in, they should stay logged in unless they log out or they will remain logged in for 30 days.
+- [x] On /login page, user should be able to click an eye icon to view password.  Then a user can click eye-slash to again hide the password.
+- [x] Admin should be able to click an edit button from any Property Profile.  The edit button should only be visible to Admins and Hosts that own that profile.
 
 ### 6.1 Phases
 
@@ -337,10 +339,10 @@ Project folder: flxvacations.com
 
 **Deliverables:**
 
-- [ ] Implement security (auth middleware, JWT or session)
-- [ ] User, Host, Admin can log in
-- [ ] Host can only create, update, delete their own properties
-- [ ] Admin can CRUD any user or property
+- [x] Implement security (auth middleware, JWT or session)
+- [x] User, Host, Admin can log in (login page wired to API)
+- [x] Host can only create, update, delete their own properties
+- [x] Admin can CRUD any user or property
 
 ### 6.6 Phase 5 — Deploy
 
