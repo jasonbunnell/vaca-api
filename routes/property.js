@@ -7,8 +7,17 @@ const {
   updateProperty,
   deleteProperty,
 } = require('../controllers/property');
+const { protect, authorize } = require('../middleware/auth');
 
-router.route('/').get(getProperties).post(createProperty);
-router.route('/:id').get(getProperty).put(updateProperty).delete(deleteProperty);
+router
+  .route('/')
+  .get(getProperties)
+  .post(protect, authorize('host', 'admin'), createProperty);
+
+router
+  .route('/:id')
+  .get(getProperty)
+  .put(protect, authorize('host', 'admin'), updateProperty)
+  .delete(protect, authorize('host', 'admin'), deleteProperty);
 
 module.exports = router;

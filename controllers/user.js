@@ -12,11 +12,18 @@ exports.getUsers = async (req, res) => {
   }
 };
 
-// @desc    Get single user
+// @desc    Get single user (self or admin)
 // @route   GET /api/users/:id
-// @access  Public (Phase 1; Phase 2 restrict by role)
+// @access  Private
 exports.getUser = async (req, res) => {
   try {
+    const isAdmin = req.user?.role === 'admin';
+    const isSelf = req.user && req.user._id.toString() === req.params.id;
+
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ error: 'Forbidden: cannot view this user.' });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -53,12 +60,24 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// @desc    Update user
+// @desc    Update user (self or admin)
 // @route   PUT /api/users/:id
-// @access  Private (Phase 2: self or admin)
+// @access  Private
 exports.updateUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const isAdmin = req.user?.role === 'admin';
+    const isSelf = req.user && req.user._id.toString() === req.params.id;
+
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ error: 'Forbidden: cannot update this user.' });
+    }
+
+    const update = { ...req.body };
+    if (!isAdmin) {
+      delete update.role;
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, update, {
       new: true,
       runValidators: true,
     });

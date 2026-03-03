@@ -11,6 +11,7 @@ const connectDB = require('./config/db');
 
 const propertyRoutes = require('./routes/property');
 const userRoutes = require('./routes/user');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/users', userRoutes);
 

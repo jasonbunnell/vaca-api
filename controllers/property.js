@@ -3,7 +3,7 @@ const Property = require('../models/Property');
 
 // @desc    Get all properties
 // @route   GET /api/properties
-// @access  Public (Phase 1; auth in Phase 2)
+// @access  Public
 exports.getProperties = async (req, res) => {
   try {
     const properties = await Property.find().populate('owner', 'name email role');
@@ -39,10 +39,21 @@ exports.getProperty = async (req, res) => {
 
 // @desc    Create property
 // @route   POST /api/properties
-// @access  Private (Phase 2: host/admin only)
+// @access  Private (host or admin)
 exports.createProperty = async (req, res) => {
   try {
-    const property = await Property.create(req.body);
+    const isAdmin = req.user?.role === 'admin';
+    const owner =
+      (isAdmin && req.body.owner) || (req.user && req.user._id);
+
+    if (!owner) {
+      return res.status(400).json({ error: 'Owner is required.' });
+    }
+
+    const property = await Property.create({
+      ...req.body,
+      owner,
+    });
     const populated = await Property.findById(property._id).populate('owner', 'name email role');
     res.status(201).json(populated);
   } catch (err) {
@@ -52,10 +63,28 @@ exports.createProperty = async (req, res) => {
 
 // @desc    Update property
 // @route   PUT /api/properties/:id
-// @access  Private (Phase 2: owner or admin)
+// @access  Private (owner or admin)
 exports.updateProperty = async (req, res) => {
   try {
-    const property = await Property.findByIdAndUpdate(req.params.id, req.body, {
+    const existing = await Property.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const isAdmin = req.user?.role === 'admin';
+    const isOwner = existing.owner && existing.owner.toString() === req.user?._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Forbidden: you do not own this property.' });
+    }
+
+    // Prevent owners from changing owner; allow admin to override if needed
+    const update = { ...req.body };
+    if (!isAdmin) {
+      delete update.owner;
+    }
+
+    const property = await Property.findByIdAndUpdate(req.params.id, update, {
       new: true,
       runValidators: true,
     }).populate('owner', 'name email role');
@@ -70,13 +99,22 @@ exports.updateProperty = async (req, res) => {
 
 // @desc    Delete property
 // @route   DELETE /api/properties/:id
-// @access  Private (Phase 2: owner or admin)
+// @access  Private (owner or admin)
 exports.deleteProperty = async (req, res) => {
   try {
-    const property = await Property.findByIdAndDelete(req.params.id);
-    if (!property) {
+    const existing = await Property.findById(req.params.id);
+    if (!existing) {
       return res.status(404).json({ error: 'Property not found' });
     }
+
+    const isAdmin = req.user?.role === 'admin';
+    const isOwner = existing.owner && existing.owner.toString() === req.user?._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ error: 'Forbidden: you do not own this property.' });
+    }
+
+    await existing.deleteOne();
     res.json({ message: 'Property deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

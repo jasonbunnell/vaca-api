@@ -7,8 +7,17 @@ const {
   updateUser,
   deleteUser,
 } = require('../controllers/user');
+const { protect, authorize } = require('../middleware/auth');
 
-router.route('/').get(getUsers).post(createUser);
-router.route('/:id').get(getUser).put(updateUser).delete(deleteUser);
+router
+  .route('/')
+  .get(protect, authorize('admin'), getUsers)
+  .post(createUser);
+
+router
+  .route('/:id')
+  .get(protect, getUser)
+  .put(protect, updateUser)
+  .delete(protect, authorize('admin'), deleteUser);
 
 module.exports = router;

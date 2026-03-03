@@ -245,13 +245,14 @@ Project folder: flxvacations.com
 - [ ] User, Host, Admin can log in
 - [ ] Host can only create, update, delete their own properties
 - [ ] Admin can CRUD any user or property
-- [ ] Add password field, update newUsers.json file with hashed password that is the first 3 letters, the first cap of first and last name and '22'.  EXAMPLE: Jason Bunnell's password would be 'JasBun22'.
-- [ ] Password should be at least 8 characters long.
+- [x] Add password field
+- [ ] Update newUsers.json / seeder with hashed password (pattern: first 3 letters, first cap first+last, '22'. e.g. JasBun22)
+- [x] Password should be at least 8 characters long.
 - [ ] Add functionality to reset password.
-- [ ] Add field createdAd with Date.now
-- [ ] Encrypt passwords
+- [x] Add field createdAd with Date.now (via timestamps: createdAt/updatedAt)
+- [x] Encrypt passwords
 - [ ] Create authentication middleware
-- [ ] Every property should be linked to at least one User ID.
+- [x] Every property should be linked to at least one User ID.
 - [ ] User should be able to reset password.
 - [ ] User should be able to add a profile picture.
 - [ ] User should be able to add City, State of their location.
