@@ -1,0 +1,149 @@
+info:
+  name: Create property
+  type: http
+  seq: 2
+  tags:
+    - Properties
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/properties"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "",
+        "slug": "",
+        "description": "",
+        "bedrooms": 0,
+        "bathrooms": 0,
+        "owner": ""
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 201 Response
+    description: Property created
+    request:
+      url: "{{baseUrl}}/api/properties"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "title": "",
+            "slug": "",
+            "description": "",
+            "bedrooms": 0,
+            "bathrooms": 0,
+            "owner": ""
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "_id": "698e7a44750bbd787627ee73",
+            "title": "Lakeside Retreat",
+            "slug": "lakeside-retreat-geneva",
+            "description": "",
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "owner": {
+              "_id": "664b1e2f9a1c2b3d4e5f6789",
+              "firstName": "Jane",
+              "lastName": "Doe",
+              "name": "Jane Doe",
+              "email": "jane@example.com",
+              "phone": "+1-555-123-4567",
+              "role": "host",
+              "createdAt": "",
+              "updatedAt": ""
+            },
+            "images": [
+              {
+                "url": "https://cdn.flxvacations.com/properties/photo_698e7a44750bbd787627ee73_01.jpg",
+                "description": "",
+                "roomType": ""
+              }
+            ]
+          }
+  - name: 400 Response
+    description: Validation error or missing owner
+    request:
+      url: "{{baseUrl}}/api/properties"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "title": "",
+            "slug": "",
+            "description": "",
+            "bedrooms": 0,
+            "bathrooms": 0,
+            "owner": ""
+          }
+    response:
+      status: 400
+      statusText: Bad Request
+      body:
+        type: text
+        data: ""
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/properties"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "title": "",
+            "slug": "",
+            "description": "",
+            "bedrooms": 0,
+            "bathrooms": 0,
+            "owner": ""
+          }
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""
+  - name: 403 Response
+    description: Forbidden (requires host or admin)
+    request:
+      url: "{{baseUrl}}/api/properties"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "title": "",
+            "slug": "",
+            "description": "",
+            "bedrooms": 0,
+            "bathrooms": 0,
+            "owner": ""
+          }
+    response:
+      status: 403
+      statusText: Forbidden
+      body:
+        type: text
+        data: ""

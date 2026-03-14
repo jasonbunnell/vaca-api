@@ -1,0 +1,74 @@
+info:
+  name: List my properties
+  type: http
+  seq: 3
+  tags:
+    - Properties
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/properties/my"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Properties owned by current user
+    request:
+      url: "{{baseUrl}}/api/properties/my"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          [
+            {
+              "_id": "698e7a44750bbd787627ee73",
+              "title": "Lakeside Retreat",
+              "slug": "lakeside-retreat-geneva",
+              "description": "",
+              "bedrooms": 3,
+              "bathrooms": 2,
+              "owner": {
+                "_id": "664b1e2f9a1c2b3d4e5f6789",
+                "firstName": "Jane",
+                "lastName": "Doe",
+                "name": "Jane Doe",
+                "email": "jane@example.com",
+                "phone": "+1-555-123-4567",
+                "role": "host",
+                "createdAt": "",
+                "updatedAt": ""
+              },
+              "images": [
+                {
+                  "url": "https://cdn.flxvacations.com/properties/photo_698e7a44750bbd787627ee73_01.jpg",
+                  "description": "",
+                  "roomType": ""
+                }
+              ]
+            }
+          ]
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/properties/my"
+      method: GET
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""

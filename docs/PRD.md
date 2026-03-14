@@ -1,10 +1,10 @@
 # Product Requirements Document (PRD)
-# FLX Vacations API
+# FLX vacations
 
 **Version:** 0.1 (Draft)  
-**Last updated:** [Feb 12, 2026]  
-**Owner:** [Jason]  
-**Status:** Scaffolding — to be filled collaboratively
+**First draft:** Feb 12, 2026
+**Latest update:** Mar 12, 2026
+**Owner:** [Jason] 
 
 ---
 
@@ -12,255 +12,200 @@
 
 We are building the API for FLX Vacations.  FLX Vacations is a site similar to AirBNB.  The site allows short term property owners in the Finger Lakes region of New York list their properties to rent to vacationers in the Finger Lakes region of New York.  Similar to AirBNB, vacationers can browse properties on a map, by criteria, by features, by price, etc.  Each property should have a unique listing.  The listing should include a property title, number of bedrooms, number of bathrooms, description, amenities, features, etc.  There should be a collection of properties, a collection of users.  Each property should be associated with a user that is of type host.
 
-**[To complete]**
-
-- **What:** 
-- **For whom: hosts and vacationers** 
-- **Primary outcome: an API for flxvacations.com** 
-- **Key dates / milestones (if any):** 
-- create Mongo database on Mongo.com
-- set up model for Property
-- set up model for User
-- set up controller for property.js
-- set up controller for user.js
-- create routes for property.js
-- create routes for user.js
-- create auth middleware
-- test routes locally
-- deploy to production server
 ---
 
 ## 2. Problem Statement
 
 The problem for hosts is that AirBNB and VRBO are expensive and have commissions more than 13%, are large and unfocused with properties all over the world and do not offer much insite to a specific tourist region by providing information on places to go, events happening in the tourist region, or the ability to book caterers, guides, etc.
 
-### 2.1 Current state
-
-**[To complete]**
-
-- What happens today?  Users browse properties on AirBNB or VRBO and those sites charge a huge commission to the hosts, thereby driving up the cost of the stay.
-- What’s broken or missing?  A region specific vacation rental site that lists properties and charges a flat fee per year instead of a commission.
-- Who is impacted (users, internal teams, business)? Hosts and travelers
+The problem for guests is that AirBNB and VRBO are the most comprehensive source for vacation rental properties by having more property listings than other options.
 
 ### 2.2 Pain points
 
-- Commissions and costs
-- Little other vacation information
+- Hosts pay high commissions to AirBNB and VRBO
+- No comprehensive local listings for vacation rentals
+- Little other vacation information like local Events, Experiences, or Services
 - No way to find properties to book directly and avoid commissions
 
 ### 2.3 Opportunity
 
-**[To complete]** — Why solve this now? What’s the cost of not solving it?
+- Partner with Hospitality Property Management like Hostaway, Lodgify, or OwnerRez, HostAway, or Lodgify where I would get an affiliate marketing commission with customers that sign up with my code and link, hosts can book directly, and guests can get a discounted stay by booking direct.
+- Offer early bird deal for 1 year and lifetime deals at 50% and another 50% if you sign up for vacation rental property management affiliate link for a total of 75% off for the first 3 months.
 
 ---
 
 ## 3. Solution Overview
 
-This site will be similar to AirBNB but allow the traveler to book directly.  Each property will have links to AirBNB, VRBO, and a direct link to book using Hostaway.  If the host does not use Hostaway, their contact information can be used.
-
 ### 3.1 Solution summary
-
-**[To complete]**
-
-- What we will build (product/feature/service).  An API that uses Mongo
-- How it addresses the problem.  The API will also us to build a website.
-- One-paragraph “elevator pitch.”  FLX Vacations cuts out the middleman and lets you book a vacation rental directly with the host and cut out the high commissions.
+This site will be similar to AirBNB but allow the traveler to book directly using integration with [OwnerRez](OwnerRez.md).  Each property can sync calendar and pricing using [OwnerRez API](https://www.ownerrez.com/support/articles/api-overview).  If the host does not use [OwnerRez], their contact information, website, and links to AirBNB and VRBO can also be used.
 
 ### 3.2 User / personas
 
 | Stakeholder | Value |
 |-------------|--------|
-| [End-User] | |
-| [Host] | |
-| [Experience-Provider] | |
+| [Guest] | A Guest is typically from outside the Finger Lakes region of NY and on a leisure vacation. |
+| [Host] | A Host is someone in the Finger Lakes region of New York that is offering a property as a short term rental. |
+| [FLXcompass.com] | Providing local events via the [jables-api](../../jables-api) |
+| [Experience-Provider] | An indivual or company in the Finger Lakes offering entertaining experiences like a fishing guide, boat rentals, wine tour, or a boat cruise. |
+| [Service-Provider] | An indivual or company in the Finger Lakes offering services like catering, peronal shopping, cleaning, photography, or rentals |
 
 ### 3.3 Out of scope (for this PRD)
 
 - a booking engine
-- guest reviews
 - dynamic pricing
 
 ---
 
 ## 4. Technical Architecture
 
-### Backend
+### 4.1 High-level architecture
+
+#### Backend
 - JavaScript
 - Express
 - Mongo DB
+- Digital Ocean
+  - Hosting
+  - [Spaces Object Storage](/docs/spaces-object-storage.md)
 
-### Frontend
+#### Frontend
 - Javascript
 - Vue / Nuxt
 
-### 4.1 High-level architecture
+### 4.3 Data model
 
-**[To complete]** — Diagram or bullet summary of:
+#### Property
+| Field | Type | Description |
+|:--:|:--:|:--:|
+| title | String | Property title |
+| slug | String | Unique slug for URL |
+| bedrooms | Number | Number of bedrooms property has |
+| bathrooms | Number | Number of bathrooms property has |
+| description | String | Description of property |
+| address | String | Address like 67 Castle Street, Unit 411, Geneva, NY 14456 that generates location object |
+| location | Object | Location object of property generated by geocode method  |
+| locaction.formattedAddress | String | generated by geocode method |
+| location.street | String | generated by geocode method |
+| location.city | String | generated by geocode method |
+| location.state | String | generated by geocode method |
+| location.zipcode | String | generated by geocode method |
+| location.country | String | generated by geocode method |
+| lake | String | Enumerated list of Finger Lakes the property is nearest |
+| amenities | array of String | list of amenities |
+| features | array of String | list of features |
+| pms | object | enumerated list of Property Management Software like "OwnerRez", "Hostaway", "Lodgify" |
+| pms.id | String | [OwnerRez](OwnerRez.md) ID from their API |
+| images | array of objects | images of the property stored in [Spaces Object Storage](/docs/spaces-object-storage.md) |
+| images[].imageName | String | name of single image using image naming methodology |
+| images[].roomType | String | Enumerated list, default "Additional Images" |
+| images[].description | String | Description of property photo |
+| images[].isMain | Boolean | One image may be indicated to be Main Image, by default the first image uploaded |
+| host | array User ID(s) | host(s) of property that is tied to [User](/models/User.js) ID. There may be 1 or more hosts for a property and additional property hosts can be added by admin or current property host |
+| createdAt | Date | date property was created |
+| updatedAt | Date | last time property was updated |
 
-- Frontend (if any), backend, data store(s).
-- External systems (APIs, auth, payments, etc.).
-- Deployment / hosting (e.g. serverless, containers, PaaS).
 
-### 4.2 Technology stack
+#### User
+| Field | Type | Description |
+|:--:|:--:|:--:|
+| firstName | String | User's first name, required |
+| lastName | String | User's last name, required |
+| email | String | User's email, validate email, required |
+| role | String | Enum list of user, host, admin |
+| subscription | String | Current plan |
+| password | String | Hashed password, required |
+| createdAt | Date | Date User was created |
+| updatedAt | Date | Date User updated User data |
 
-| Layer | Choice | Notes |
+
+### 4.4 Security & Authorization
+
+#### Route security (reference)
+Route-level access is defined below. Keep this table in sync with implementation and `openapi.yaml`.
+
+| Route | Method | Access |
 |-------|--------|--------|
-| Runtime / language | JavaScript | |
-| Framework | Vue / Nuxt | |
-| Data store | MongoDB | |
-| Auth | | |
-| APIs / integrations | | |
-| Hosting / deployment | Digital Ocean | |
+| /api/health | GET | Public |
+| /api/auth/login | POST | Public |
+| /api/auth/forgot-password | POST | Public |
+| /api/auth/reset-password | POST | Public |
+| /api/users | POST | Public (registration) |
+| /api/properties | GET | Public |
+| /api/properties/:id | GET | Public |
+| /api/auth/me | GET | Authenticated |
+| /api/auth/change-password | POST | Authenticated |
+| /api/properties/my | GET | Authenticated (host list) |
+| /api/users/:id | GET, PUT | Self or admin |
+| /api/users | GET | Admin only |
+| /api/users/:id | DELETE | Admin only |
+| /api/properties | POST | Host or admin |
+| /api/properties/:id | POST | Host or admin |
+| /api/properties/:id | PUT, DELETE | Host or admin |
+| /api/upload/image | POST | Host or admin |
 
-### 4.3 Data model (summary)
+#### Description
+Every user should have a password and the backend should hash these values so they are not exposed in the database.  Every user has a password; the backend hashes passwords so they are not stored in plain text.  Every user can request a password reset; reset tokens are single-use and time-limited; login and password-reset endpoints are rate-limited.  Production uses HTTPS only.  Authenticated requests use a JWT Every user should be able to reset their password.  Admins should be able to CRUD on both properties and users collections with the exception of user email and password.  Users collection has an enumerated list [ user | host | admin ].  If a user creates a property, their role is changed from user to host and their user Object Id value is placed in the properties host field.  Any user whose _id is in property.host array may CRUD that property and upload, edit, or delete its images.  The site should protect against Cross Site Scripting, but allow 3rd party tools like Google Analytics.  Data protection: All request inputs are validated and sanitized; the API does not use raw user input in queries (NoSQL injection prevention). User-supplied content is not rendered as HTML by the API; the frontend mitigates XSS via escaping and a Content-Security-Policy that allows trusted third-party scripts (e.g. Google Analytics). Secrets (JWT secret, database URL, object storage keys) are stored in environment variables or a secrets manager, not in source code.
 
-**[To complete]** — Main entities and relationships (list or link to schema).
+#### Completed Success Criteria
+- [x] A user should be able to request a **Password Reset**. Reset tokens are single-use and time-limited to expire in 1 hour. Rate limiting with max 3 per hour per user (by email for login/forgot-password; by IP for reset-password).
+- [x] A user can update their own profile data (name, phone, password, etc.). A user cannot change their email. Only admin can CRUD all users and user profile data (name, phone); admin cannot change email or password.
+- [x] Admins can GET all users via /api/users, GET a single user via /api/users/:id, and GET themselves via /api/auth/me.
+- [x] API allows requests only from configured frontend origins and localhost for dev (CORS_ORIGINS).
+- [x] Authenticated requests use JWT in the Authorization header (Bearer token). Production traffic uses HTTPS only (deployment concern).
+- [x] Property ownership is determined by user's _id in property's host array.
+- [x] Public routes: GET properties, GET property (and /api/health, auth login/forgot-password/reset-password, POST /api/users for registration).
+- [x] Authenticated routes: GET /api/auth/me, change-password, GET /api/properties/my, GET/PUT /api/users/:id (self or admin), POST/PUT/DELETE property, POST /api/upload/image. Only admin and property's host (user in host array) can access property and image mutation routes.
+- [x] API validates and sanitizes inputs (body, query, params) with express-validator; Mongoose used for queries (no raw user input; NoSQL injection prevention).
+- [x] User-supplied text is not rendered as HTML by the API; XSS is mitigated on the frontend via escaping and CSP (frontend responsibility).
+- [x] Secrets (JWT secret, DB URL, Spaces keys, etc.) are kept in environment variables, not in source code or client.
+- [x] Rate limiting on login and forgot-password (3 per hour per email) and reset-password (3 per hour per IP). API returns 429 with message. Frontend may show orange warning icon and notification.
+- [x] Log sensitive actions: login (success/failure), password reset request, password change, user create/update/delete, property create/update/delete.
+- [x] In updateUser, email and password are always removed from the update object (for both self and admin). No one can change email or password via PUT; password changes only via change-password and reset-password.
 
-### 4.4 Security & compliance
-
-- Authentication / authorization: 
-- Data handling (PII, sensitive data): 
-- Compliance (e.g. GDPR, HIPAA): 
-
-### 4.5 Non-functional requirements
-
-| Area | Requirement |
-|------|-------------|
-| Performance | |
-| Availability / uptime | |
-| Scalability | |
-| Observability (logging, monitoring) | |
+#### Outstanding Success Criteria
+- [ ] The frontend uses a strict Content-Security-Policy but allows scripts from trusted domains (frontend implementation).
+- [ ] Allow GET events from jables-api (e.g. proxy route or frontend calls jables-api; not yet in vaca-api).
+- [ ] Dependencies kept up to date; known high/critical vulnerabilities addressed (e.g. npm audit, periodic updates).
 
 ---
 
-## 5. Functional Requirements
+## 5. Features
 
-<!-- What the system must do, in a form we can use for design, build, and test. -->
+### 5.1 Images
 
-### 5.1 User roles / personas
+#### Description
+The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  Users should be to navigate to a page All Photos to see all the photos they have uploaded.  They should be able to click a photo, add a photo desciption, select a room from an enumerated list of room types like: Living room, Kitchen, Dining, Bedroom X (X dependds on the number of bedrooms), Bathroom X (X depends on the number of bathrooms), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.  Only one image can be Main Image per property and this would be used for the Property Summary Card on the front page and the larger image on the Property Profile Page.
 
-| Role | Description |
-|------|-------------|
-| Admin | Can create, read, update, delete all users and all properties|
-| Host | Can read any property. Can create and update any property they own |
-| User | Can read any property |
+#### Design
+The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
 
-### 5.2 Features and requirements
+#### Success Criteria
+- [ ] Only admin or host where the host where user ObjectId matches properties user ObjectId field can upload or edit an image or its values to the property.  Any user can view images.
+- [ ] When user uploads an image, the image file name is changed using the naming convention, the image field array is updated with the new file name, the image file is uploaded to [spaces-object-storage](/docs/spaces-object-storage.md).
+- [ ] From /properties/edit/[Property Id] page, host or admin can upload a photo using the [Upload a file]() link or drag and drop a PNG, JPG, JPEG, GIF, WEBP up to 2MB (X/50).  X is the current number of photos.  If host or admin clicks Upload a file link or drags a file to the box and the number of photos is already = 50, a warning notification pops up with an orange warning icon and "**You already have 50 images!**<br />Remove another image to add another image file."  If image file > 2MB, "**Image file size too large!<br />Image file sizes must be 2MB or smaller."  If an invalid image file type is attempted to upload, "**Images must be a valid image file type!<br />Please try a JPG, JPEG, GIF, or WEBP image file type."  Multi-file upload is not supported.
+- [ ] Only admin or host can go to a Property Edit Photos page that shows all the photos as thumnails.  admin or host can select a photo to go to a larger view of photos with a Photo Description field and a dropdown to select a room type from an enumerted list of room types, use a Tailwind CSS Toggle with right label "Main Image" that makes the image the main profile image of the property.  The room type enumerated values are Living room, Kitchen, Dining, Bedroom X (X dependds on the number of bedrooms indicated in the bathrooms field value), Bathroom X (X depends on the number of bathrooms indicated in the bathrooms field value), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.
+- [ ] The Bedroom X and Bathroom X depend on the values in properties.bedrooms value.  Example: if the bedrooms value is 3, there should be Bedroom 1, Bedroom 2, and Bedroom 3 room types.
+- [ ] The Property Profile page should show a collage of 5 photos, the Main Image file being larger on the left and 4 smaller on the right where the 4 smaller 2x2 grid size = the 1 larger size.  Over the bottom most right image, a button with "Show all photos" links to the Property Photos Page.
+- [ ] The Property Photos Page has a top bar with a thumbnail and room type name.  Below the bar, the page is in two columns.  On the left is the room type name, on the right are tiled medium images.  When mouseover image, the image seems to zoom in.  User can click an image to go to Property Photo Page.  The Top Bar should be visible as the user scrolls down so they can click a room type and jump to that section of the page.  This page is a grid with multiple images by room type.  The top image nav bar has a single image for each room type and the room type name below and by clicking the image or room type name, the user jumps to this section of the page.
+- [ ] Property Photo Page has a top bar with a thumbnail and room type name.  Clicking one of these take user jumps to the Property Photos Page to the section clicked on the top bar.  User can advance with a right arrow button or the right arrow key.  User can go back one image with a left arrow button or the left arrow key.  There is an H2 on the page with the name of the room and a descrpition below if the host has added one to the image.  This page has a single image plus a top image nav bar that has a single image for each room type and the room type name below and by clicking the image or room type name, the user jumps to the first image with this room type.
+- [ ] The Top Image Nav Bar is sticky to the top of the page, below the main menu.  There is one image for each room type with the name of the room type below.
+- [ ] admin and host can see an X in the top right of images on the Property Photo Page, where, if clicked, removes that photo.  When an image is removed, the image file is removed from Spaces and the database image array.
+- [ ] The default room type is "Additional Photos" until the host has selected otherwise.
+- [ ] There can only be one Main Image, by default this is the first image uploaded.  Host can use a Tailwind CSS Toggle with right label "Main Image" to indicate an image as the Main Image.  If this Toggle is selected, that image is made Main Image and previous Main Image is changed from TRUE to FALSE and is no longer the Main Image.
+- [ ] The image description is used as the img alt value.  The description is not required.
+- [ ] Spaces Object Storage should have a properties folder.  Images uploaded for a property should go in the properties folder.  Example: `properties/photo_698e7a44750bbd787627ee73_01.jpg` 
 
-<!-- Use a consistent format: Feature → User story / acceptance criteria. -->
-
-#### HostAway Integration
-
-**Feature:** [HostAway]
-
-- **As a** [Host], **I want integration with [HostAway] so that [User] can book a booking directly using [HostAway] API, FLX Vacations can get prices and availability, etc.**
-- **Acceptance criteria:**
-  - [ ] Conntect to [HostAway] API
-  - [ ] GET property price
-  - [ ] GET property availability
-  - [ ] POST property booking
-  - [ ] UPDATE property availability
-
-#### Create a Property Listing page
-
-**Feature:** [Create-Listing]
-
-- **As a** [Host], **I want** to create a property listing **so that** [Guest] can see images organized by room, learn about Host and see where they live, see key features of the property, see property type, read a description of the property, filter properties by amenities, read reviews, so location on a Google Map.
-- **Acceptance criteria:**
-  - [ ] Host can add pictures, organize pictures by room, add a writen description of a picture that is up to 250 characters, the picture discription should be shown when a user is looking at individual pictures and it should be in the alt value.  Guest can view pictures one of two ways.  One would be a page with a photo bar at the top with a thumbnail and room name for each room so Guest can jump to those pictures. Below that are two columns, the left has the room name like "Living room" with a brief description of that room like "Air conditioning, board games, books and reading material, TV" and the right column would be images in that room collection that are tiled and larger.  The Guest can click on an image to switch to individual photo view.  The second way the Guest can view pictures is the individual photo view.  In this view there is only one image with a black background behind the image.  Circular arrow buttons to advance or go back to prior image.  Hosts can add up to 30 images.
-  - [ ] When a Host adds a photo, that photo should be stored in a Digital Ocean Spaces Object Storage bucket.  The endpoint for this bucket is 'https://flxvaca.nyc3.digitaloceanspaces.com' with Access Key Name 'flxvaca-2146494477', Access Key ID 'DO003HM4GT9FL9XZXRF9', with secret key '2+AgAUTZDDU+mm67LqePBr3eXm4V884GXzHV6xlW6hQ'.  These values should be stored in .ENV and not visible in the repo.  The database should have an array of images.
-  - [ ] The Host should be able to select the lake they are on from a dropdown list of enum values from the database that include all the lakes in the Finger Lakes like "Seneca Lake", "Keuka Lake", etc.
-  - [ ] The Host should be able to select multiple values for amenities from a check box list.  The property profile should display 10 of those amenities with a button that says "Show all [number of amenities] amenities".
-  - [ ] The Admin can Edit a property and add photos.
-
-#### Guest Reviews
-- **As a** [Guest] **I want** to leave a review of the property **so that** other potential [Guest] can better know the property and if the property profile and images accurately reflect the property.
-
-- **Acceptance criteria:**
-  - [ ] Guest should be able to leave a review after staying at the property.
-  - [ ] Guest reviews should be visible on the Property Profile page.  Each review should show [Guest] Profile Picture, City and State where [Guest] lives, 1 - 5 star review, Month and year the [Guest] stayed at the property, how long the [Guest] stayed at the property, the first 3 lines of the review with a "Show more" link or button.
-  - [ ] The Guest Review section should show the last 6 reviews based on Date Stayed.
-  - [ ] [Guest] may rate on a 1 - 5 scale the Cleanliness, Vibe, Check-in, Communication, Location, and Amenities.
-  - [ ] At the top of the [Guest] Rating section, there should be a bar showing averages for the Cleanliness, Vibe, Check-in, Communication, Location, and Amenities.
-  
-
-**[Repeat as needed]**
-
-### 5.3 API / integration requirements (if applicable)
-
-- **Endpoints / contracts:** 
-- **Third-party integrations:** 
-- **Webhooks / events:** 
-
-### 5.4 Edge cases & error handling
-
-- Offline / degraded mode: 
-- Validation & error messages: 
-- Rate limits / quotas: 
-
+### 5.2 []
 ---
 
 ## 6. Implementation Plan
-### Kickoff
-- [x] Set up files and folders
-  - config
-  - controllers
-  - middleware
-  - models
-  - routes
-  - utils
-  - server.js
+### 6.1 Kickoff - COMPLETE
+### 6.2 Front End Creation - COMPLETE
+### 6.3 Authentication & Security
+#### Completed Items
 
-- [x] Set up entry point: server.js
-
-- [x] Set up MVC for properties
-- [x] Set up MVC for users
-
-### Front End Creation
-Project folder: flxvacations.com
-- [x] Create project folder for frontend and install Nuxt
-- [x] Install modules needed for this project including Tailwind
-- [x] Create homepage that displays properties in a grid showing image, name, price range
-- [x] Create a design using Tailwind that is similar to AirBNB
-  - Use a text logo "FLXvacations"
-  - Use a near white background
-  - User should be able to search for properties by amenities, date picker
-  - Menu should include "Homes", "Events", "Experiences", "Services"
-  - Far right should have a hamburger menu with "Log in or sign up", "Become a host"
-  - Create these pages
-    - [x] Sign up page with fields "First Name", "Last Name", "Email", "Phone", "Password"
-    - [x] Create a property listing page
-    - [x] Events page (placeholder; wire API when ready)
-      - API endpoint: https://flxcompass.com/api/v1/events
-      - Below pagination, put "See more events at FLXcompass.com"
-
-### Test
-- [ ] Test locally
-- [ ] Fix Issues
-- [ ] Extend models as needed
-- [ ] Extend routes as needed
-
-### Authentication & Security
-- [x] Implement security (JWT, auth middleware)
-- [x] User, Host, Admin can log in (API + login page)
-- [x] Host can only create, update, delete their own properties
-- [x] Admin can CRUD any user or property
-- [x] Add password field
-- [x] Update newUsers.json / seeder with hashed password (pattern: first 3 letters first+last + '22'. e.g. JasBun22)
-- [x] Password should be at least 8 characters long.
-- [x] Add field createdAd with Date.now (via timestamps: createdAt/updatedAt)
-- [x] Encrypt passwords
-- [x] Create authentication middleware
-- [x] Every property should be linked to at least one User ID.
-- [x] Add functionality to reset password. User should be able to reset password.
-- [x] User should be able to add a profile picture.
-- [x] User should be able to add City, State of their location.
-- [x] When user logs in, "Log in or sign up" should be replaced by their user pic, round circle in top right, right of Become a host button.  When a user logs in, they should stay logged in unless they log out or they will remain logged in for 30 days.
-- [x] On /login page, user should be able to click an eye icon to view password.  Then a user can click eye-slash to again hide the password.
-- [x] Admin should be able to click an edit button from any Property Profile.  The edit button should only be visible to Admins and Hosts that own that profile.
-- [x] Once logged in, there should be a round user icon with their profile photo or their initials.  To the left of that should be a blue button "Become a host"
-- [x] If a user completes Become a host, their user ID is added to the owner field of Property document.
-- [x] If a user clicks their icon, the menu should include "Edit profile", "Dashboard" and "Become a host" should be "Add a property"
+#### Outstanding Items
+- [ ]
 
 ### User Dashboard Page
 - [x] User should see a list of their properties that have a card with one photo of the property, property title, and Edit and Delete icons and name.

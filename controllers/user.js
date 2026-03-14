@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { logAction } = require('../utils/securityLogger');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -54,6 +55,7 @@ exports.createUser = async (req, res) => {
       password,
       role: role || 'user',
     });
+    logAction('user-create', { userId: user._id, success: true });
     res.status(201).json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -73,6 +75,9 @@ exports.updateUser = async (req, res) => {
     }
 
     const update = { ...req.body };
+    // No one can change email or password via PUT (PRD 4.4)
+    delete update.email;
+    delete update.password;
     if (!isAdmin) {
       delete update.role;
     }
@@ -84,6 +89,7 @@ exports.updateUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+    logAction('user-update', { userId: req.user._id, success: true, detail: { targetUserId: req.params.id, byAdmin: isAdmin } });
     res.json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -99,6 +105,7 @@ exports.deleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+    logAction('user-delete', { userId: req.user._id, success: true, detail: { targetUserId: req.params.id } });
     res.json({ message: 'User deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

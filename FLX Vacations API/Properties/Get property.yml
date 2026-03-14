@@ -1,0 +1,85 @@
+info:
+  name: Get property
+  type: http
+  seq: 4
+  tags:
+    - Properties
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/properties/:id"
+  params:
+    - name: id
+      value: 698e7a44750bbd787627ee73
+      type: path
+      description: Property slug or ID
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Property
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: GET
+      params:
+        - name: id
+          value: ""
+          type: path
+          description: Property slug or ID
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "_id": "698e7a44750bbd787627ee73",
+            "title": "Lakeside Retreat",
+            "slug": "lakeside-retreat-geneva",
+            "description": "",
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "owner": {
+              "_id": "664b1e2f9a1c2b3d4e5f6789",
+              "firstName": "Jane",
+              "lastName": "Doe",
+              "name": "Jane Doe",
+              "email": "jane@example.com",
+              "phone": "+1-555-123-4567",
+              "role": "host",
+              "createdAt": "",
+              "updatedAt": ""
+            },
+            "images": [
+              {
+                "url": "https://cdn.flxvacations.com/properties/photo_698e7a44750bbd787627ee73_01.jpg",
+                "description": "",
+                "roomType": ""
+              }
+            ]
+          }
+  - name: 404 Response
+    description: Property not found
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: GET
+      params:
+        - name: id
+          value: ""
+          type: path
+          description: Property slug or ID
+    response:
+      status: 404
+      statusText: Not Found
+      body:
+        type: text
+        data: ""

@@ -1,0 +1,57 @@
+info:
+  name: Get current user
+  type: http
+  seq: 2
+  tags:
+    - Auth
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/auth/me"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Current user info
+    request:
+      url: "{{baseUrl}}/api/auth/me"
+      method: GET
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "_id": "664b1e2f9a1c2b3d4e5f6789",
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "phone": "+1-555-123-4567",
+            "role": "host",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/auth/me"
+      method: GET
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""

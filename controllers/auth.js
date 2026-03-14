@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { logAction } = require('../utils/securityLogger');
 
 function signToken(user) {
   const payload = { id: user._id, role: user.role };
@@ -36,16 +37,21 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    // Match User schema: email is stored lowercase
+    const emailNorm = String(email).trim().toLowerCase();
+    const user = await User.findOne({ email: emailNorm }).select('+password');
     if (!user) {
+      logAction('login', { success: false, detail: 'user not found' });
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      logAction('login', { userId: user._id, success: false, detail: 'invalid password' });
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    logAction('login', { userId: user._id, success: true });
     const token = signToken(user);
     res.json({ token, user: buildUserResponse(user) });
   } catch (err) {
@@ -85,7 +91,7 @@ exports.changePassword = async (req, res) => {
 
     user.password = newPassword;
     await user.save();
-
+    logAction('change-password', { userId: req.user._id, success: true });
     res.json({ message: 'Password updated successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -101,7 +107,8 @@ exports.forgotPassword = async (req, res) => {
     if (!email) {
       return res.status(400).json({ error: 'Email is required.' });
     }
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const emailNorm = String(email).trim().toLowerCase();
+    const user = await User.findOne({ email: emailNorm });
     if (!user) {
       return res.status(404).json({ error: 'No user with that email.' });
     }
@@ -109,6 +116,7 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
     user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
     await user.save({ validateBeforeSave: false });
+    logAction('forgot-password', { userId: user._id, success: true });
     res.json({ message: 'If that email exists, a reset link would be sent.', resetToken: token });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -139,6 +147,7 @@ exports.resetPassword = async (req, res) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
+    logAction('reset-password', { userId: user._id, success: true });
     res.json({ message: 'Password reset successfully. You can log in with your new password.' });
   } catch (err) {
     res.status(500).json({ error: err.message });

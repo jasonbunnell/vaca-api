@@ -41,13 +41,17 @@ async function importProperties() {
     acc[u.email.toLowerCase()] = u._id;
     return acc;
   }, {});
-  const propertiesWithOwner = propertiesData.map((p) => {
-    const { ownerEmail, ...rest } = p;
-    const ownerId = userByEmail[ownerEmail?.toLowerCase()];
-    if (!ownerId) throw new Error(`No user found for ownerEmail: ${ownerEmail}`);
-    return { ...rest, owner: ownerId };
+  const propertiesWithHost = propertiesData.map((p) => {
+    const { ownerEmail, hostEmail, host, ...rest } = p;
+    const email = (hostEmail || ownerEmail)?.toLowerCase();
+    const firstHostId = email ? userByEmail[email] : null;
+    if (!firstHostId) throw new Error(`No user found for host/owner email: ${email || hostEmail || ownerEmail}`);
+    const hostIds = Array.isArray(host) && host.length
+      ? host.map((id) => (typeof id === 'string' ? id : id?.toString?.())).filter(Boolean)
+      : [firstHostId];
+    return { ...rest, host: hostIds };
   });
-  const created = await Property.create(propertiesWithOwner);
+  const created = await Property.create(propertiesWithHost);
   return created;
 }
 

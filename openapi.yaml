@@ -1,0 +1,604 @@
+openapi: 3.0.3
+info:
+  title: FLX Vacations API
+  version: 0.1.0
+  description: |
+    API for FLX Vacations (vaca-api).
+    This spec captures current routes, public vs authorized access,
+    auth schemes, roles, and example payloads.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Properties
+  - name: Upload
+  - name: Health
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "664b1e2f9a1c2b3d4e5f6789"
+        firstName:
+          type: string
+          example: "Jane"
+        lastName:
+          type: string
+          example: "Doe"
+        name:
+          type: string
+          example: "Jane Doe"
+        email:
+          type: string
+          format: email
+          example: "jane@example.com"
+        phone:
+          type: string
+          example: "+1-555-123-4567"
+        role:
+          type: string
+          enum: [user, host, admin]
+          example: host
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Property:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "698e7a44750bbd787627ee73"
+        title:
+          type: string
+          example: "Lakeside Retreat"
+        slug:
+          type: string
+          example: "lakeside-retreat-geneva"
+        description:
+          type: string
+        bedrooms:
+          type: integer
+          example: 3
+        bathrooms:
+          type: integer
+          example: 2
+        host:
+          type: array
+          description: User ObjectIds (populated as User objects in responses)
+          items:
+            $ref: "#/components/schemas/User"
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+                example: "https://cdn.flxvacations.com/properties/photo_698e7a44750bbd787627ee73_01.jpg"
+              description:
+                type: string
+              roomType:
+                type: string
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns basic API health information.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: FLX Vacations API
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in
+      description: Public endpoint to obtain a JWT for subsequent authenticated requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "jane@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "MySecurePassword123!"
+      responses:
+        "200":
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT bearer token
+                  user:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Missing fields
+        "401":
+          description: Invalid credentials
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      description: Returns the currently authenticated user's profile.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authorized
+
+  /api/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password (logged-in user)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  example: "OldPassword123!"
+                newPassword:
+                  type: string
+                  format: password
+                  example: "NewPassword456!"
+      responses:
+        "200":
+          description: Password updated successfully
+        "400":
+          description: Validation error or incorrect current password
+        "401":
+          description: Not authorized
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset
+      description: Public endpoint to request a password reset token by email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "jane@example.com"
+      responses:
+        "200":
+          description: Reset requested (token returned only in dev)
+        "400":
+          description: Missing email
+        "404":
+          description: No user with that email
+
+  /api/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token
+      description: Public endpoint to set a new password using a reset token from forgot-password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token:
+                  type: string
+                  example: "c4f9b6c2e1..."
+                newPassword:
+                  type: string
+                  format: password
+                  example: "NewPassword456!"
+      responses:
+        "200":
+          description: Password reset successfully
+        "400":
+          description: Invalid or expired token, or validation error
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: Admin-only list of all users.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (requires admin)
+    post:
+      tags: [Users]
+      summary: Create user (registration)
+      description: Public registration endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, password]
+              properties:
+                firstName:
+                  type: string
+                  example: "Jane"
+                lastName:
+                  type: string
+                  example: "Doe"
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  example: "+1-555-123-4567"
+                password:
+                  type: string
+                  format: password
+                role:
+                  type: string
+                  enum: [user, host, admin]
+                  description: Normally omitted; defaults to user.
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by id
+      description: Self or admin can retrieve a specific user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID
+      responses:
+        "200":
+          description: User record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (not self or admin)
+        "404":
+          description: User not found
+    put:
+      tags: [Users]
+      summary: Update user
+      description: Self or admin can update a user. Admin may also change role.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [user, host, admin]
+                  description: Admin only
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (not self or admin)
+        "404":
+          description: User not found
+    delete:
+      tags: [Users]
+      summary: Delete user
+      description: Admin-only delete of a user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User deleted
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (requires admin)
+        "404":
+          description: User not found
+
+  /api/properties:
+    get:
+      tags: [Properties]
+      summary: List properties
+      description: Public list of all properties.
+      responses:
+        "200":
+          description: List of properties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Property"
+    post:
+      tags: [Properties]
+      summary: Create property
+      description: Host or admin can create a property. If admin, host (User ObjectId or array) may be specified in body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                bedrooms:
+                  type: integer
+                bathrooms:
+                  type: integer
+                host:
+                  oneOf:
+                    - type: string
+                      description: Single User ObjectId
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of User ObjectIds (admin can set; default is current user)
+      responses:
+        "201":
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Property"
+        "400":
+          description: Validation error or missing host
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (requires host or admin)
+
+  /api/properties/my:
+    get:
+      tags: [Properties]
+      summary: List my properties
+      description: List properties where the current user is in the host array.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Properties owned by current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Property"
+        "401":
+          description: Not authorized
+
+  /api/properties/{id}:
+    get:
+      tags: [Properties]
+      summary: Get property
+      description: Get single property by slug or ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property slug or ID
+      responses:
+        "200":
+          description: Property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Property"
+        "404":
+          description: Property not found
+    put:
+      tags: [Properties]
+      summary: Update property
+      description: Owner or admin can update a property.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Partial property update
+      responses:
+        "200":
+          description: Updated property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Property"
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (not host or admin)
+        "404":
+          description: Property not found
+    delete:
+      tags: [Properties]
+      summary: Delete property
+      description: Owner or admin can delete a property.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Property deleted
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (not host or admin)
+        "404":
+          description: Property not found
+
+  /api/upload/image:
+    post:
+      tags: [Upload]
+      summary: Upload property image
+      description: Host or admin uploads an image to Spaces. Returns the public URL.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: JPEG, PNG, or WebP file up to 2MB.
+                propertyId:
+                  type: string
+                  description: Optional property ID to include in the filename.
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: "https://flxvaca.nyc3.digitaloceanspaces.com/properties/photo_698e7a44750bbd787627ee73_01.jpg"
+        "400":
+          description: Validation error, missing image, or invalid type/size
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (requires host or admin)
+        "503":
+          description: Image storage not configured
+

@@ -1,0 +1,148 @@
+info:
+  name: Upload property image
+  type: http
+  seq: 1
+  tags:
+    - Upload
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/upload/image"
+  body:
+    type: multipart-form
+    data:
+      - name: image
+        type: file
+        value: []
+        description: JPEG, PNG, or WebP file up to 2MB.
+      - name: propertyId
+        type: text
+        value: ""
+        description: Optional property ID to include in the filename.
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Image uploaded successfully
+    request:
+      url: "{{baseUrl}}/api/upload/image"
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: image
+            type: file
+            value: []
+            description: JPEG, PNG, or WebP file up to 2MB.
+          - name: propertyId
+            type: text
+            value: ""
+            description: Optional property ID to include in the filename.
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "url": "https://flxvaca.nyc3.digitaloceanspaces.com/properties/photo_698e7a44750bbd787627ee73_01.jpg"
+          }
+  - name: 400 Response
+    description: Validation error, missing image, or invalid type/size
+    request:
+      url: "{{baseUrl}}/api/upload/image"
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: image
+            type: file
+            value: []
+            description: JPEG, PNG, or WebP file up to 2MB.
+          - name: propertyId
+            type: text
+            value: ""
+            description: Optional property ID to include in the filename.
+    response:
+      status: 400
+      statusText: Bad Request
+      body:
+        type: text
+        data: ""
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/upload/image"
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: image
+            type: file
+            value: []
+            description: JPEG, PNG, or WebP file up to 2MB.
+          - name: propertyId
+            type: text
+            value: ""
+            description: Optional property ID to include in the filename.
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""
+  - name: 403 Response
+    description: Forbidden (requires host or admin)
+    request:
+      url: "{{baseUrl}}/api/upload/image"
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: image
+            type: file
+            value: []
+            description: JPEG, PNG, or WebP file up to 2MB.
+          - name: propertyId
+            type: text
+            value: ""
+            description: Optional property ID to include in the filename.
+    response:
+      status: 403
+      statusText: Forbidden
+      body:
+        type: text
+        data: ""
+  - name: 503 Response
+    description: Image storage not configured
+    request:
+      url: "{{baseUrl}}/api/upload/image"
+      method: POST
+      body:
+        type: multipart-form
+        data:
+          - name: image
+            type: file
+            value: []
+            description: JPEG, PNG, or WebP file up to 2MB.
+          - name: propertyId
+            type: text
+            value: ""
+            description: Optional property ID to include in the filename.
+    response:
+      status: 503
+      statusText: Service Unavailable
+      body:
+        type: text
+        data: ""

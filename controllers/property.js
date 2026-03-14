@@ -1,12 +1,13 @@
 const mongoose = require('mongoose');
 const Property = require('../models/Property');
+const { logAction } = require('../utils/securityLogger');
 
 // @desc    Get all properties
 // @route   GET /api/properties
 // @access  Public
 exports.getProperties = async (req, res) => {
   try {
-    const properties = await Property.find().populate('owner', 'name email role');
+    const properties = await Property.find().populate('host', 'name email role');
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -22,11 +23,11 @@ exports.getProperty = async (req, res) => {
     let property = null;
 
     // Prefer slug lookup so URLs can be /properties/:slug
-    property = await Property.findOne({ slug: id }).populate('owner', 'name email role');
+    property = await Property.findOne({ slug: id }).populate('host', 'name email role');
 
     // Fallback to ObjectId for existing ID-based URLs
     if (!property && mongoose.Types.ObjectId.isValid(id)) {
-      property = await Property.findById(id).populate('owner', 'name email role');
+      property = await Property.findById(id).populate('host', 'name email role');
     }
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
@@ -42,7 +43,7 @@ exports.getProperty = async (req, res) => {
 // @access  Private
 exports.getMyProperties = async (req, res) => {
   try {
-    const properties = await Property.find({ owner: req.user._id }).populate('owner', 'name email role');
+    const properties = await Property.find({ host: req.user._id }).populate('host', 'name email role');
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -55,18 +56,25 @@ exports.getMyProperties = async (req, res) => {
 exports.createProperty = async (req, res) => {
   try {
     const isAdmin = req.user?.role === 'admin';
-    const owner =
-      (isAdmin && req.body.owner) || (req.user && req.user._id);
-
-    if (!owner) {
-      return res.status(400).json({ error: 'Owner is required.' });
+    let hostIds = [];
+    if (isAdmin && req.body.host != null) {
+      hostIds = Array.isArray(req.body.host) ? req.body.host : [req.body.host];
+      hostIds = hostIds.filter(Boolean).map((id) => (typeof id === 'string' ? id : id?.toString?.() || id));
+    }
+    if (hostIds.length === 0) {
+      hostIds = [req.user._id];
+    }
+    if (!hostIds.length) {
+      return res.status(400).json({ error: 'At least one host is required.' });
     }
 
+    const { host, ...rest } = req.body;
     const property = await Property.create({
-      ...req.body,
-      owner,
+      ...rest,
+      host: hostIds,
     });
-    const populated = await Property.findById(property._id).populate('owner', 'name email role');
+    logAction('property-create', { userId: req.user._id, success: true, detail: { propertyId: property._id } });
+    const populated = await Property.findById(property._id).populate('host', 'name email role');
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -75,7 +83,7 @@ exports.createProperty = async (req, res) => {
 
 // @desc    Update property
 // @route   PUT /api/properties/:id
-// @access  Private (owner or admin)
+// @access  Private (host or admin); ownership = user's _id in property.host array
 exports.updateProperty = async (req, res) => {
   try {
     const existing = await Property.findById(req.params.id);
@@ -84,25 +92,36 @@ exports.updateProperty = async (req, res) => {
     }
 
     const isAdmin = req.user?.role === 'admin';
-    const isOwner = existing.owner && existing.owner.toString() === req.user?._id.toString();
+    const hostIds = existing.host || [];
+    const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
 
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ error: 'Forbidden: you do not own this property.' });
+    if (!isAdmin && !isHost) {
+      return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
     }
 
-    // Prevent owners from changing owner; allow admin to override if needed
     const update = { ...req.body };
-    if (!isAdmin) {
-      delete update.owner;
+    if (update.host != null) {
+      const newHost = Array.isArray(update.host) ? update.host : [update.host];
+      const normalized = newHost.filter(Boolean).map((id) => (typeof id === 'string' ? id : id?.toString?.() || id));
+      if (normalized.length < 1) {
+        return res.status(400).json({ error: 'Property must have at least one host.' });
+      }
+      if (!isAdmin && normalized.every((id) => id !== req.user._id.toString())) {
+        return res.status(400).json({ error: 'You cannot remove yourself from the host list.' });
+      }
+      update.host = normalized;
+    } else if (!isAdmin) {
+      delete update.host;
     }
 
     const property = await Property.findByIdAndUpdate(req.params.id, update, {
       new: true,
       runValidators: true,
-    }).populate('owner', 'name email role');
+    }).populate('host', 'name email role');
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }
+    logAction('property-update', { userId: req.user._id, success: true, detail: { propertyId: req.params.id } });
     res.json(property);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -111,7 +130,7 @@ exports.updateProperty = async (req, res) => {
 
 // @desc    Delete property
 // @route   DELETE /api/properties/:id
-// @access  Private (owner or admin)
+// @access  Private (host or admin)
 exports.deleteProperty = async (req, res) => {
   try {
     const existing = await Property.findById(req.params.id);
@@ -120,13 +139,15 @@ exports.deleteProperty = async (req, res) => {
     }
 
     const isAdmin = req.user?.role === 'admin';
-    const isOwner = existing.owner && existing.owner.toString() === req.user?._id.toString();
+    const hostIds = existing.host || [];
+    const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
 
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ error: 'Forbidden: you do not own this property.' });
+    if (!isAdmin && !isHost) {
+      return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
     }
 
     await existing.deleteOne();
+    logAction('property-delete', { userId: req.user._id, success: true, detail: { propertyId: req.params.id } });
     res.json({ message: 'Property deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

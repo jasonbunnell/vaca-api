@@ -1,0 +1,88 @@
+info:
+  name: Create user (registration)
+  type: http
+  seq: 2
+  tags:
+    - Users
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/users"
+  body:
+    type: json
+    data: |-
+      {
+        "firstName": "Jane",
+        "lastName": "Doe",
+        "email": "",
+        "phone": "+1-555-123-4567",
+        "password": "",
+        "role": "user"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 201 Response
+    description: User created
+    request:
+      url: "{{baseUrl}}/api/users"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "email": "",
+            "phone": "+1-555-123-4567",
+            "password": "",
+            "role": "user"
+          }
+    response:
+      status: 201
+      statusText: Created
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "_id": "664b1e2f9a1c2b3d4e5f6789",
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "phone": "+1-555-123-4567",
+            "role": "host",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 400 Response
+    description: Validation error
+    request:
+      url: "{{baseUrl}}/api/users"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "email": "",
+            "phone": "+1-555-123-4567",
+            "password": "",
+            "role": "user"
+          }
+    response:
+      status: 400
+      statusText: Bad Request
+      body:
+        type: text
+        data: ""

@@ -77,10 +77,15 @@ const propertySchema = new mongoose.Schema(
       default: [],
       validate: [function (v) { return v.length <= 50; }, 'Property cannot have more than 50 images'],
     },
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'Owner (host) is required'],
+    host: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+      required: [true, 'At least one host is required'],
+      validate: [
+        function (v) {
+          return Array.isArray(v) && v.length >= 1;
+        },
+        'Property must have at least one host',
+      ],
     },
   },
   {

@@ -1,0 +1,85 @@
+info:
+  name: Delete property
+  type: http
+  seq: 6
+  tags:
+    - Properties
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/properties/:id"
+  params:
+    - name: id
+      value: 698e7a44750bbd787627ee74
+      type: path
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Property deleted
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: DELETE
+      params:
+        - name: id
+          value: ""
+          type: path
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: text
+        data: ""
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: DELETE
+      params:
+        - name: id
+          value: ""
+          type: path
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""
+  - name: 403 Response
+    description: Forbidden (not owner or admin)
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: DELETE
+      params:
+        - name: id
+          value: ""
+          type: path
+    response:
+      status: 403
+      statusText: Forbidden
+      body:
+        type: text
+        data: ""
+  - name: 404 Response
+    description: Property not found
+    request:
+      url: "{{baseUrl}}/api/properties/:id"
+      method: DELETE
+      params:
+        - name: id
+          value: ""
+          type: path
+    response:
+      status: 404
+      statusText: Not Found
+      body:
+        type: text
+        data: ""

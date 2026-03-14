@@ -16,6 +16,9 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ error: 'Not authorized, token missing' });
     }
 
+    // Normalize: strip whitespace, newlines, and surrounding quotes (copy-paste / env variable quirks)
+    token = String(token).trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
 
@@ -26,6 +29,10 @@ exports.protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
+    // In development, log reason (expired vs invalid) to help debug; never expose in response
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[auth] JWT verify failed:', err.message || err.name);
+    }
     return res.status(401).json({ error: 'Not authorized, token invalid' });
   }
 };

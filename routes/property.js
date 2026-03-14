@@ -9,18 +9,20 @@ const {
   deleteProperty,
 } = require('../controllers/property');
 const { protect, authorize } = require('../middleware/auth');
+const { handleValidationErrors } = require('../middleware/validate');
+const propertyValidators = require('../validators/property');
 
 router
   .route('/')
   .get(getProperties)
-  .post(protect, authorize('host', 'admin'), createProperty);
+  .post(protect, authorize('host', 'admin'), propertyValidators.createProperty, handleValidationErrors, createProperty);
 
 router.get('/my', protect, getMyProperties);
 
 router
   .route('/:id')
   .get(getProperty)
-  .put(protect, authorize('host', 'admin'), updateProperty)
+  .put(protect, authorize('host', 'admin'), propertyValidators.updateProperty, handleValidationErrors, updateProperty)
   .delete(protect, authorize('host', 'admin'), deleteProperty);
 
 module.exports = router;

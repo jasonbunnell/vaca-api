@@ -1,0 +1,144 @@
+info:
+  name: Update user
+  type: http
+  seq: 4
+  tags:
+    - Users
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/users/:id"
+  params:
+    - name: id
+      value: ""
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "firstName": "",
+        "lastName": "",
+        "phone": "",
+        "role": "user"
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response
+    description: Updated user
+    request:
+      url: "{{baseUrl}}/api/users/:id"
+      method: PUT
+      params:
+        - name: id
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "",
+            "lastName": "",
+            "phone": "",
+            "role": "user"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "_id": "664b1e2f9a1c2b3d4e5f6789",
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "name": "Jane Doe",
+            "email": "jane@example.com",
+            "phone": "+1-555-123-4567",
+            "role": "host",
+            "createdAt": "",
+            "updatedAt": ""
+          }
+  - name: 401 Response
+    description: Not authorized
+    request:
+      url: "{{baseUrl}}/api/users/:id"
+      method: PUT
+      params:
+        - name: id
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "",
+            "lastName": "",
+            "phone": "",
+            "role": "user"
+          }
+    response:
+      status: 401
+      statusText: Unauthorized
+      body:
+        type: text
+        data: ""
+  - name: 403 Response
+    description: Forbidden (not self or admin)
+    request:
+      url: "{{baseUrl}}/api/users/:id"
+      method: PUT
+      params:
+        - name: id
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "",
+            "lastName": "",
+            "phone": "",
+            "role": "user"
+          }
+    response:
+      status: 403
+      statusText: Forbidden
+      body:
+        type: text
+        data: ""
+  - name: 404 Response
+    description: User not found
+    request:
+      url: "{{baseUrl}}/api/users/:id"
+      method: PUT
+      params:
+        - name: id
+          value: ""
+          type: path
+      body:
+        type: json
+        data: |-
+          {
+            "firstName": "",
+            "lastName": "",
+            "phone": "",
+            "role": "user"
+          }
+    response:
+      status: 404
+      statusText: Not Found
+      body:
+        type: text
+        data: ""
