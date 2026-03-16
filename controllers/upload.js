@@ -88,7 +88,15 @@ exports.uploadImage = async (req, res) => {
     }
 
     const isAdmin = req.user?.role === 'admin';
-    const hostIds = property.host || [];
+    let hostIds = property.host || [];
+    if (!hostIds.length) {
+      // Older properties may have been created before host was enforced. Only an admin can repair this.
+      if (!isAdmin) {
+        return res.status(400).json({ error: 'Property has no hosts configured. Contact an admin to fix this property before uploading images.' });
+      }
+      property.host = [req.user._id];
+      hostIds = property.host;
+    }
     const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
     if (!isAdmin && !isHost) {
       return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
