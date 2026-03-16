@@ -56,7 +56,7 @@ This site will be similar to AirBNB but allow the traveler to book directly usin
 
 ---
 
-## 4. Technical Architecture
+## 4. Sitewide Technical Architecture & Design
 
 ### 4.1 High-level architecture
 
@@ -143,6 +143,10 @@ Route-level access is defined below. Keep this table in sync with implementation
 | /api/properties/:id | PUT, DELETE | Host or admin |
 | /api/upload/image | POST | Host or admin |
 
+### 4.3 Sitewide Design
+- [ ] Design should use Tailwind CSS
+- [ ] Site should be responsive with large, medium, and small screen designs.
+
 #### Description
 Every user should have a password and the backend should hash these values so they are not exposed in the database.  Every user has a password; the backend hashes passwords so they are not stored in plain text.  Every user can request a password reset; reset tokens are single-use and time-limited; login and password-reset endpoints are rate-limited.  Production uses HTTPS only.  Authenticated requests use a JWT Every user should be able to reset their password.  Admins should be able to CRUD on both properties and users collections with the exception of user email and password.  Users collection has an enumerated list [ user | host | admin ].  If a user creates a property, their role is changed from user to host and their user Object Id value is placed in the properties host field.  Any user whose _id is in property.host array may CRUD that property and upload, edit, or delete its images.  The site should protect against Cross Site Scripting, but allow 3rd party tools like Google Analytics.  Data protection: All request inputs are validated and sanitized; the API does not use raw user input in queries (NoSQL injection prevention). User-supplied content is not rendered as HTML by the API; the frontend mitigates XSS via escaping and a Content-Security-Policy that allows trusted third-party scripts (e.g. Google Analytics). Secrets (JWT secret, database URL, object storage keys) are stored in environment variables or a secrets manager, not in source code.
 
@@ -177,25 +181,32 @@ Every user should have a password and the backend should hash these values so th
 The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  Users should be to navigate to a page All Photos to see all the photos they have uploaded.  They should be able to click a photo, add a photo desciption, select a room from an enumerated list of room types like: Living room, Kitchen, Dining, Bedroom X (X dependds on the number of bedrooms), Bathroom X (X depends on the number of bathrooms), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.  Only one image can be Main Image per property and this would be used for the Property Summary Card on the front page and the larger image on the Property Profile Page.
 
 #### Design
-The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
+- [ ] The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
+- [ ] The frontend homepage should add an H2 in the Featured Vacation Rentals section "Featured Vacation Rentals".
+- [ ] In the Featured Vacation Rentals section, the grid is a grid of cards with properties.  These cards are called **Property Summary Cards**.  The Property Summary Card should use the main image as the image in this card.  The aspect ratio should be 4:3 where the long edge is the horizontal edge.
 
-#### Success Criteria
-- [ ] Only admin or host where the host where user ObjectId matches properties user ObjectId field can upload or edit an image or its values to the property.  Any user can view images.
-- [ ] When user uploads an image, the image file name is changed using the naming convention, the image field array is updated with the new file name, the image file is uploaded to [spaces-object-storage](/docs/spaces-object-storage.md).
+#### Completed Success Criteria
+- [x] Only admin or host (user ObjectId in property host array) can upload or edit an image or its values to the property.  Any user can view images (API: upload/update/delete restricted; GET property public).
+- [x] When user uploads an image, the image file name is changed using the naming convention `photo_[Property ID]_XX.[file type]`, the image field array is updated with the new entry (url, room, caption, main), and the file is uploaded to [spaces-object-storage](/docs/spaces-object-storage.md).
+- [x] Image object includes a **main** field (API field name `isMain`). The first image uploaded is main (TRUE). Admin or host for that property can change which image is main; the API updates the previous main to FALSE and the selected image to TRUE (via PUT property with images array or future PATCH). Only one image per property is main at a time.
+- [x] The default room type is "Additional Photos" until the host has selected otherwise.
+- [x] The image description (caption) is optional and is used as the img alt value on the frontend.
+- [x] Spaces Object Storage has a properties folder.  Images uploaded for a property are stored in the properties folder.  Example: `properties/photo_698e7a44750bbd787627ee73_01.jpg`.
+- [x] API enforces max 50 images per property, 2MB max file size, and allowed types JPG, JPEG, PNG, GIF, WEBP; returns clear errors when limits or type are exceeded. Admin or host can delete an image; the file is removed from Spaces and the entry is removed from the property images array (DELETE /api/properties/:id/images/:index).
+
+#### Outstanding Success Criteria
 - [ ] From /properties/edit/[Property Id] page, host or admin can upload a photo using the [Upload a file]() link or drag and drop a PNG, JPG, JPEG, GIF, WEBP up to 2MB (X/50).  X is the current number of photos.  If host or admin clicks Upload a file link or drags a file to the box and the number of photos is already = 50, a warning notification pops up with an orange warning icon and "**You already have 50 images!**<br />Remove another image to add another image file."  If image file > 2MB, "**Image file size too large!<br />Image file sizes must be 2MB or smaller."  If an invalid image file type is attempted to upload, "**Images must be a valid image file type!<br />Please try a JPG, JPEG, GIF, or WEBP image file type."  Multi-file upload is not supported.
-- [ ] Only admin or host can go to a Property Edit Photos page that shows all the photos as thumnails.  admin or host can select a photo to go to a larger view of photos with a Photo Description field and a dropdown to select a room type from an enumerted list of room types, use a Tailwind CSS Toggle with right label "Main Image" that makes the image the main profile image of the property.  The room type enumerated values are Living room, Kitchen, Dining, Bedroom X (X dependds on the number of bedrooms indicated in the bathrooms field value), Bathroom X (X depends on the number of bathrooms indicated in the bathrooms field value), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.
-- [ ] The Bedroom X and Bathroom X depend on the values in properties.bedrooms value.  Example: if the bedrooms value is 3, there should be Bedroom 1, Bedroom 2, and Bedroom 3 room types.
-- [ ] The Property Profile page should show a collage of 5 photos, the Main Image file being larger on the left and 4 smaller on the right where the 4 smaller 2x2 grid size = the 1 larger size.  Over the bottom most right image, a button with "Show all photos" links to the Property Photos Page.
-- [ ] The Property Photos Page has a top bar with a thumbnail and room type name.  Below the bar, the page is in two columns.  On the left is the room type name, on the right are tiled medium images.  When mouseover image, the image seems to zoom in.  User can click an image to go to Property Photo Page.  The Top Bar should be visible as the user scrolls down so they can click a room type and jump to that section of the page.  This page is a grid with multiple images by room type.  The top image nav bar has a single image for each room type and the room type name below and by clicking the image or room type name, the user jumps to this section of the page.
-- [ ] Property Photo Page has a top bar with a thumbnail and room type name.  Clicking one of these take user jumps to the Property Photos Page to the section clicked on the top bar.  User can advance with a right arrow button or the right arrow key.  User can go back one image with a left arrow button or the left arrow key.  There is an H2 on the page with the name of the room and a descrpition below if the host has added one to the image.  This page has a single image plus a top image nav bar that has a single image for each room type and the room type name below and by clicking the image or room type name, the user jumps to the first image with this room type.
-- [ ] The Top Image Nav Bar is sticky to the top of the page, below the main menu.  There is one image for each room type with the name of the room type below.
-- [ ] admin and host can see an X in the top right of images on the Property Photo Page, where, if clicked, removes that photo.  When an image is removed, the image file is removed from Spaces and the database image array.
-- [ ] The default room type is "Additional Photos" until the host has selected otherwise.
-- [ ] There can only be one Main Image, by default this is the first image uploaded.  Host can use a Tailwind CSS Toggle with right label "Main Image" to indicate an image as the Main Image.  If this Toggle is selected, that image is made Main Image and previous Main Image is changed from TRUE to FALSE and is no longer the Main Image.
-- [ ] The image description is used as the img alt value.  The description is not required.
-- [ ] Spaces Object Storage should have a properties folder.  Images uploaded for a property should go in the properties folder.  Example: `properties/photo_698e7a44750bbd787627ee73_01.jpg` 
+- [ ] Only admin or host can go to a Property Edit Photos page that shows all the photos as thumbnails.  Admin or host can select a photo to go to a larger view with a Photo Description field and a dropdown to select a room type from an enumerated list, and a Tailwind CSS Toggle with right label "Main Image" to set the main profile image.  Room type values: Living room, Kitchen, Dining, Bedroom X (X from property.bedrooms), Bathroom X (X from property.bathrooms), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.
+- [ ] The Bedroom X and Bathroom X options in the room type list depend on property.bedrooms and property.bathrooms.  Example: if bedrooms is 3, show Bedroom 1, Bedroom 2, Bedroom 3.
+- [ ] The Property Profile page shows a collage of 5 photos, the Main Image larger on the left and 4 smaller on the right (2x2 grid size = the larger size).  Over the bottom-right image, a "Show all photos" button links to the Property Photos Page.
+- [ ] The Property Photos Page has a top bar with a thumbnail and room type name.  Below the bar, two columns: left = room type name, right = tiled medium images.  Mouseover zooms image.  Clicking an image goes to Property Photo Page.  The top bar is sticky on scroll so users can click a room type to jump to that section.  Top image nav bar has one image per room type with the room type name below; clicking jumps to that section.
+- [ ] Property Photo Page has a top bar with thumbnail and room type name; clicking jumps to Property Photos Page at that section.  User can advance with right arrow button or key and go back with left arrow button or key.  H2 with room name and description below if the host added one.  Single image plus top image nav bar (one image per room type); clicking jumps to first image of that room type.
+- [ ] The Top Image Nav Bar is sticky to the top of the page, below the main menu.  One image per room type with the room type name below.
+- [ ] Admin and host see an X in the top right of images on the Property Photo Page; clicking removes that photo (call DELETE image API; backend removes file from Spaces and entry from database).
 
-### 5.2 []
+### Deployment / environment (action required)
+If you see browser errors such as `[GET] "https://flxvacations.com/api/properties/...": <no response> Failed to fetch` or similar for `/api/upload/image` or `/api/properties`, the frontend is calling the API at the wrong origin or the API is unreachable. **You need to:** (1) Set **NUXT_PUBLIC_API_BASE** in production to your vaca-api base URL (e.g. `https://your-vaca-api.example.com`), or (2) Configure your host (e.g. nginx) to proxy `/api` to the vaca-api server and keep **NUXT_PUBLIC_API_BASE** as same-origin. Ensure vaca-api CORS allows your frontend origin (see PRD 4.4).
+
 ---
 
 ## 6. Implementation Plan

@@ -1,5 +1,7 @@
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { v4: uuidv4 } = require('uuid');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const mongoose = require('mongoose');
+const Property = require('../models/Property');
+const { logAction } = require('../utils/securityLogger');
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const BUCKET = process.env.SPACES_BUCKET_NAME || process.env.SPACE_BUCKET_NAME || 'flxvaca';
@@ -31,9 +33,36 @@ function getS3Client() {
 }
 
 /**
+ * Derive Spaces object key from a full CDN URL (e.g. for delete).
+ * Keys are always "properties/photo_xxx_xx.ext". If pathname contains "properties/", use from there so custom CDN paths work.
+ */
+function keyFromImageUrl(imageUrl) {
+  if (!imageUrl || typeof imageUrl !== 'string') return null;
+  try {
+    const u = new URL(imageUrl);
+    const path = u.pathname.replace(/^\//, '');
+    const propertiesIdx = path.indexOf('properties/');
+    const key = propertiesIdx >= 0 ? path.slice(propertiesIdx) : path;
+    return key || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete an object from Spaces by key. No-op if client not configured.
+ */
+async function deleteFromSpaces(key) {
+  const client = getS3Client();
+  if (!client) return;
+  await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+}
+
+/**
  * POST /api/upload/image
- * Multipart form: image (file), optional propertyId
- * Uploads to DO Spaces: properties/photo_{propertyId}_{XX}.jpg
+ * Multipart form: image (file), propertyId (required).
+ * Uploads to DO Spaces: properties/photo_{propertyId}_{01..50}.{ext}, appends to property.images.
+ * Caller must be host or admin of the property.
  */
 exports.uploadImage = async (req, res) => {
   try {
@@ -45,7 +74,28 @@ exports.uploadImage = async (req, res) => {
     }
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Invalid image type. Use JPEG, PNG, or WebP.' });
+      return res.status(400).json({ error: 'Invalid image type. Use JPG, JPEG, PNG, GIF, or WEBP.' });
+    }
+
+    const propertyId = req.body && req.body.propertyId;
+    if (!propertyId || !mongoose.Types.ObjectId.isValid(propertyId)) {
+      return res.status(400).json({ error: 'Valid propertyId is required' });
+    }
+
+    const property = await Property.findById(propertyId);
+    if (!property) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const isAdmin = req.user?.role === 'admin';
+    const hostIds = property.host || [];
+    const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
+    if (!isAdmin && !isHost) {
+      return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
+    }
+
+    if (property.images.length >= 50) {
+      return res.status(400).json({ error: 'Property already has 50 images. Remove another to add one.' });
     }
 
     const client = getS3Client();
@@ -53,11 +103,10 @@ exports.uploadImage = async (req, res) => {
       return res.status(503).json({ error: 'Image storage not configured' });
     }
 
-    const propertyId = (req.body && req.body.propertyId) || 'new';
     const extMap = { 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
     const ext = extMap[req.file.mimetype] || 'jpg';
-    const shortId = uuidv4().slice(0, 8);
-    const key = `properties/photo_${propertyId}_${shortId}.${ext}`;
+    const seq = String(property.images.length + 1).padStart(2, '0');
+    const key = `properties/photo_${propertyId}_${seq}.${ext}`;
 
     await client.send(
       new PutObjectCommand({
@@ -70,9 +119,34 @@ exports.uploadImage = async (req, res) => {
     );
 
     const url = `${SPACES_CDN}/${key}`;
-    return res.status(200).json({ url });
+    const isMain = property.images.length === 0;
+    property.images.push({
+      url,
+      room: 'Additional Photos',
+      caption: '',
+      isMain,
+    });
+    await property.save();
+
+    logAction('image-upload', {
+      userId: req.user._id,
+      success: true,
+      detail: { propertyId: property._id, imageUrl: url },
+    });
+
+    const added = property.images[property.images.length - 1];
+    return res.status(200).json({ url, image: added, propertyId: property._id });
   } catch (err) {
     console.error('Upload error:', err);
     return res.status(500).json({ error: 'Failed to upload image' });
   }
+};
+
+/**
+ * Delete an image from Spaces by URL. Used by property controller when removing an image.
+ */
+exports.deleteFromSpacesByUrl = async (imageUrl) => {
+  const key = keyFromImageUrl(imageUrl);
+  if (!key) return;
+  await deleteFromSpaces(key);
 };

@@ -13,12 +13,11 @@ http:
     data:
       - name: image
         type: file
-        value: []
-        description: JPEG, PNG, or WebP file up to 2MB.
+        value:
+          - /home/jason/Downloads/main1.jpg
       - name: propertyId
         type: text
-        value: ""
-        description: Optional property ID to include in the filename.
+        value: 698e7a44750bbd787627ee73
   auth:
     type: bearer
     token: "{{token}}"

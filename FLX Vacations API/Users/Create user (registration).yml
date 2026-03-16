@@ -12,11 +12,11 @@ http:
     type: json
     data: |-
       {
-        "firstName": "Jane",
-        "lastName": "Doe",
-        "email": "",
-        "phone": "+1-555-123-4567",
-        "password": "",
+        "firstName": "Nelson",
+        "lastName": "Miller",
+        "email": "nelsonmiller85@gmail.com",
+        "phone": "814-585-5015",
+        "password": "password",
         "role": "user"
       }
   auth: inherit

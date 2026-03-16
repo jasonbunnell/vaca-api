@@ -7,6 +7,7 @@ const {
   createProperty,
   updateProperty,
   deleteProperty,
+  deletePropertyImage,
 } = require('../controllers/property');
 const { protect, authorize } = require('../middleware/auth');
 const { handleValidationErrors } = require('../middleware/validate');
@@ -18,6 +19,13 @@ router
   .post(protect, authorize('host', 'admin'), propertyValidators.createProperty, handleValidationErrors, createProperty);
 
 router.get('/my', protect, getMyProperties);
+
+router.delete(
+  '/:id/images/:index',
+  protect,
+  authorize('host', 'admin'),
+  deletePropertyImage
+);
 
 router
   .route('/:id')

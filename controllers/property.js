@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Property = require('../models/Property');
 const { logAction } = require('../utils/securityLogger');
+const { deleteFromSpacesByUrl } = require('./upload');
 
 // @desc    Get all properties
 // @route   GET /api/properties
@@ -100,6 +101,19 @@ exports.updateProperty = async (req, res) => {
     }
 
     const update = { ...req.body };
+    if (update.images && Array.isArray(update.images)) {
+      const withMain = update.images.filter((i) => i && i.isMain === true);
+      if (withMain.length > 1) {
+        const firstMainIndex = update.images.findIndex((i) => i && i.isMain === true);
+        update.images.forEach((img, idx) => {
+          if (img && typeof img === 'object') img.isMain = idx === firstMainIndex;
+        });
+      } else if (withMain.length === 0 && update.images.length > 0) {
+        if (update.images[0] && typeof update.images[0] === 'object') {
+          update.images[0].isMain = true;
+        }
+      }
+    }
     if (update.host != null) {
       const newHost = Array.isArray(update.host) ? update.host : [update.host];
       const normalized = newHost.filter(Boolean).map((id) => (typeof id === 'string' ? id : id?.toString?.() || id));
@@ -125,6 +139,51 @@ exports.updateProperty = async (req, res) => {
     res.json(property);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+};
+
+// @desc    Delete one image from a property (removes from Spaces and DB)
+// @route   DELETE /api/properties/:id/images/:index
+// @access  Private (host or admin for this property)
+exports.deletePropertyImage = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const isAdmin = req.user?.role === 'admin';
+    const hostIds = property.host || [];
+    const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
+    if (!isAdmin && !isHost) {
+      return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
+    }
+
+    const index = parseInt(req.params.index, 10);
+    if (Number.isNaN(index) || index < 0 || index >= property.images.length) {
+      return res.status(400).json({ error: 'Invalid image index' });
+    }
+
+    const removed = property.images[index];
+    const wasMain = removed && removed.isMain;
+
+    await deleteFromSpacesByUrl(removed.url);
+    property.images.splice(index, 1);
+
+    if (wasMain && property.images.length > 0) {
+      property.images[0].isMain = true;
+    }
+    await property.save();
+
+    logAction('image-delete', {
+      userId: req.user._id,
+      success: true,
+      detail: { propertyId: property._id, imageUrl: removed.url },
+    });
+
+    res.json({ message: 'Image removed', property: property });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 

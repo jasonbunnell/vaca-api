@@ -86,16 +86,24 @@ components:
             $ref: "#/components/schemas/User"
         images:
           type: array
+          maxItems: 50
           items:
             type: object
             properties:
               url:
                 type: string
                 example: "https://cdn.flxvacations.com/properties/photo_698e7a44750bbd787627ee73_01.jpg"
-              description:
+              room:
                 type: string
-              roomType:
+                description: Room type (e.g. Living room, Kitchen, Additional Photos). Default "Additional Photos".
+              caption:
                 type: string
+                maxLength: 250
+                description: Photo description (used as img alt). Optional.
+              isMain:
+                type: boolean
+                default: false
+                description: Only one image per property may be main (for summary card and profile).
 
 paths:
   /api/health:
@@ -560,11 +568,56 @@ paths:
         "404":
           description: Property not found
 
+  /api/properties/{id}/images/{index}:
+    delete:
+      tags: [Properties, Upload]
+      summary: Delete property image
+      description: Host or admin for this property removes one image. Deletes file from Spaces and entry from property.images. Index is 0-based.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Property ID
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+          description: 0-based index of the image in property.images
+      responses:
+        "200":
+          description: Image removed; returns updated property
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Image removed"
+                  property:
+                    $ref: "#/components/schemas/Property"
+        "400":
+          description: Invalid image index
+        "401":
+          description: Not authorized
+        "403":
+          description: Forbidden (not host or admin for this property)
+        "404":
+          description: Property not found
+
   /api/upload/image:
     post:
       tags: [Upload]
       summary: Upload property image
-      description: Host or admin uploads an image to Spaces. Returns the public URL.
+      description: |
+        Host or admin for the property uploads an image. File is stored in Spaces under properties/photo_{propertyId}_{01..50}.{ext}
+        and appended to property.images with default room "Additional Photos". First image is set as main. Max 50 images per property.
       security:
         - bearerAuth: []
       requestBody:
@@ -573,18 +626,18 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [image]
+              required: [image, propertyId]
               properties:
                 image:
                   type: string
                   format: binary
-                  description: JPEG, PNG, or WebP file up to 2MB.
+                  description: JPG, JPEG, PNG, GIF, or WEBP file up to 2MB.
                 propertyId:
                   type: string
-                  description: Optional property ID to include in the filename.
+                  description: Property ID. Caller must be host or admin of this property.
       responses:
         "200":
-          description: Image uploaded successfully
+          description: Image uploaded and appended to property
           content:
             application/json:
               schema:
@@ -593,12 +646,28 @@ paths:
                   url:
                     type: string
                     example: "https://flxvaca.nyc3.digitaloceanspaces.com/properties/photo_698e7a44750bbd787627ee73_01.jpg"
+                  image:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      room:
+                        type: string
+                        example: "Additional Photos"
+                      caption:
+                        type: string
+                      isMain:
+                        type: boolean
+                  propertyId:
+                    type: string
         "400":
-          description: Validation error, missing image, or invalid type/size
+          description: Validation error, missing image/propertyId, invalid type/size, or property already has 50 images
         "401":
           description: Not authorized
         "403":
-          description: Forbidden (requires host or admin)
+          description: Forbidden (not host or admin for this property)
+        "404":
+          description: Property not found
         "503":
           description: Image storage not configured
 

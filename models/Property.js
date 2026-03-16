@@ -70,8 +70,9 @@ const propertySchema = new mongoose.Schema(
       type: [
         {
           url: { type: String, required: true },
-          room: { type: String, default: '' },
+          room: { type: String, default: 'Additional Photos' },
           caption: { type: String, maxlength: 250, default: '' },
+          isMain: { type: Boolean, default: false },
         },
       ],
       default: [],

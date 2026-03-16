@@ -19,7 +19,7 @@ http:
     type: json
     data: |-
       {
-        "lake": "Seneca Lake"
+        "user": "69b465495165e8775d343154"
       }
   auth:
     type: bearer
