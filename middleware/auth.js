@@ -20,10 +20,15 @@ exports.protect = async (req, res, next) => {
     token = String(token).trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    // Support both id and _id in payload (e.g. different token formats or legacy)
+    const userId = decoded.id ?? decoded._id;
+    if (!userId || (typeof userId === 'string' && userId.length < 10)) {
+      return res.status(401).json({ error: 'Not authorized, token invalid' });
+    }
+    const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(401).json({ error: 'Not authorized, user not found' });
+      return res.status(401).json({ error: 'Not authorized. Please log in again.' });
     }
 
     req.user = user;

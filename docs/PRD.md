@@ -178,12 +178,13 @@ Every user should have a password and the backend should hash these values so th
 ### 5.1 Images
 
 #### Description
-The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  Users should be to navigate to a page All Photos to see all the photos they have uploaded.  They should be able to click a photo, add a photo desciption, select a room from an enumerated list of room types like: Living room, Kitchen, Dining, Bedroom X (X dependds on the number of bedrooms), Bathroom X (X depends on the number of bathrooms), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.  Only one image can be Main Image per property and this would be used for the Property Summary Card on the front page and the larger image on the Property Profile Page.
+The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  
 
 #### Design
-- [ ] The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
-- [ ] The frontend homepage should add an H2 in the Featured Vacation Rentals section "Featured Vacation Rentals".
 - [ ] In the Featured Vacation Rentals section, the grid is a grid of cards with properties.  These cards are called **Property Summary Cards**.  The Property Summary Card should use the main image as the image in this card.  The aspect ratio should be 4:3 where the long edge is the horizontal edge.
+- [ ] Main menu is currently 1280 pixels wide in lg screen size.  Make other sections on the same 1280 pixels wide on lg screens.  For example, Property Page 5 Image Collage looks to be 848 pixels wide.  property.description seems to be 848 pixels wide.  Sections on index.vue page seem to be 1232.
+- [ ] If user clicks on image in 5 Image Collage, the user goes to the section that photo is in.  Example:  If the user clicks a picture and that picture is a room type = "Kitchen", the user should go to the Property Photos Page to the Kitchen section.
+
 
 #### Completed Success Criteria
 - [x] Only admin or host (user ObjectId in property host array) can upload or edit an image or its values to the property.  Any user can view images (API: upload/update/delete restricted; GET property public).
@@ -193,20 +194,41 @@ The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF,
 - [x] The image description (caption) is optional and is used as the img alt value on the frontend.
 - [x] Spaces Object Storage has a properties folder.  Images uploaded for a property are stored in the properties folder.  Example: `properties/photo_698e7a44750bbd787627ee73_01.jpg`.
 - [x] API enforces max 50 images per property, 2MB max file size, and allowed types JPG, JPEG, PNG, GIF, WEBP; returns clear errors when limits or type are exceeded. Admin or host can delete an image; the file is removed from Spaces and the entry is removed from the property images array (DELETE /api/properties/:id/images/:index).
+- [X] Decrease the height of small images in 5 Image Collage so the width of the large image is half of the width of the width of two small images and the two small images aspect ratio is roughly 4:3.
+- [X] On pages/properties/[id].vue page, remove sections between 5 photo collage and property.title H1.
+- [X] The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
+- [X] The frontend homepage should add an H2 in the Featured Vacation Rentals section "Featured Vacation Rentals".
+- [X] From /properties/edit/[Property Id] page, host or admin can upload a photo using the [Upload a file]() link or drag and drop a PNG, JPG, JPEG, GIF, WEBP up to 2MB (X/50).  X is the current number of photos.  If host or admin clicks Upload a file link or drags a file to the box and the number of photos is already = 50, a warning notification pops up with an orange warning icon and "**You already have 50 images!**<br />Remove another image to add another image file."  If image file > 2MB, "**Image file size too large!<br />Image file sizes must be 2MB or smaller."  If an invalid image file type is attempted to upload, "**Images must be a valid image file type!<br />Please try a JPG, JPEG, GIF, or WEBP image file type."  Multi-file upload is not supported.
+- [X] User should be able to add photos when creating a listing from the /properties/create page.
+- [X] The Property Profile page shows a collage of 5 photos, the Main Image larger on the left and 4 smaller on the right (2x2 grid size = the larger size).  Over the bottom-right image, a "Show all photos" button links to the Property Photos Page.
+- [X] The Bedroom X and Bathroom X options in the room type list depend on property.bedrooms and property.bathrooms.  Example: if bedrooms is 3, show Bedroom 1, Bedroom 2, Bedroom 3.
 
 #### Outstanding Success Criteria
-- [ ] From /properties/edit/[Property Id] page, host or admin can upload a photo using the [Upload a file]() link or drag and drop a PNG, JPG, JPEG, GIF, WEBP up to 2MB (X/50).  X is the current number of photos.  If host or admin clicks Upload a file link or drags a file to the box and the number of photos is already = 50, a warning notification pops up with an orange warning icon and "**You already have 50 images!**<br />Remove another image to add another image file."  If image file > 2MB, "**Image file size too large!<br />Image file sizes must be 2MB or smaller."  If an invalid image file type is attempted to upload, "**Images must be a valid image file type!<br />Please try a JPG, JPEG, GIF, or WEBP image file type."  Multi-file upload is not supported.
-- [ ] Only admin or host can go to a Property Edit Photos page that shows all the photos as thumbnails.  Admin or host can select a photo to go to a larger view with a Photo Description field and a dropdown to select a room type from an enumerated list, and a Tailwind CSS Toggle with right label "Main Image" to set the main profile image.  Room type values: Living room, Kitchen, Dining, Bedroom X (X from property.bedrooms), Bathroom X (X from property.bathrooms), Backyard, Exterior, Laundry, Patio, Game Room, Work Room, Music Studio, or Additional Photos.
-- [ ] The Bedroom X and Bathroom X options in the room type list depend on property.bedrooms and property.bathrooms.  Example: if bedrooms is 3, show Bedroom 1, Bedroom 2, Bedroom 3.
-- [ ] The Property Profile page shows a collage of 5 photos, the Main Image larger on the left and 4 smaller on the right (2x2 grid size = the larger size).  Over the bottom-right image, a "Show all photos" button links to the Property Photos Page.
-- [ ] The Property Photos Page has a top bar with a thumbnail and room type name.  Below the bar, two columns: left = room type name, right = tiled medium images.  Mouseover zooms image.  Clicking an image goes to Property Photo Page.  The top bar is sticky on scroll so users can click a room type to jump to that section.  Top image nav bar has one image per room type with the room type name below; clicking jumps to that section.
-- [ ] Property Photo Page has a top bar with thumbnail and room type name; clicking jumps to Property Photos Page at that section.  User can advance with right arrow button or key and go back with left arrow button or key.  H2 with room name and description below if the host added one.  Single image plus top image nav bar (one image per room type); clicking jumps to first image of that room type.
-- [ ] The Top Image Nav Bar is sticky to the top of the page, below the main menu.  One image per room type with the room type name below.
-- [ ] Admin and host see an X in the top right of images on the Property Photo Page; clicking removes that photo (call DELETE image API; backend removes file from Spaces and entry from database).
+
+
+
 
 ### Deployment / environment (action required)
 If you see browser errors such as `[GET] "https://flxvacations.com/api/properties/...": <no response> Failed to fetch` or similar for `/api/upload/image` or `/api/properties`, the frontend is calling the API at the wrong origin or the API is unreachable. **You need to:** (1) Set **NUXT_PUBLIC_API_BASE** in production to your vaca-api base URL (e.g. `https://your-vaca-api.example.com`), or (2) Configure your host (e.g. nginx) to proxy `/api` to the vaca-api server and keep **NUXT_PUBLIC_API_BASE** as same-origin. Ensure vaca-api CORS allows your frontend origin (see PRD 4.4).
 
+### 5.2 Property Images Page
+#### Description
+This page should display **all** images for a property on a page.  There should be a Image Nav Bar at the top of the page that sticks to the top like a submenu.  In the Image Nav Bar, each room type should be listed with the room type name and one image from with that room type.  Below the Image Nav Bar, **all** images for that property should be displayed in sections where each room type where there are images with that room type are displayed.  User can click a room type from the Image Nav Bar to jump to that section.  This should be laid out similar to [Himrod House - Photos](https://www.himrodhouse.com/himrod-house-orp5b6ae0bx#room-479395).  Below the larger image should be the description.
+
+#### Success Criteria - Outstanding
+- [ ] The Property Photos Page has a Image Nav Bar at the with a thumbnail and room type name.  The top Image Nav Bar is sticky to the top of the page, below the main menu.  The Image Nav Bar should have one title and image for each room type that has an image.  When a user clicks a room type image or title, the user should jump down to that section of the Image Page section.
+- [ ] The Property Image Page should have **every** photo listed on that page grouped in sections by room type.  The images should be large or medium.  Below each image should be a P tag with the description.  The Room Type should be an H3.  If a user clicks a room type from the Image Nav Bar, the page should jump to that same section.  Example:  If "Additional Photos" is the last section at the bottom of the page and user clicks "Additional Photos" in the Image Nav Bar, he should jump to that section of the page.
+- [ ] Images should be arranged in a 2 column grid.  Example: if the room types and image count are Exterior (3), Kitchen (2), Bedroom 1 (2), Bathroom 1, and Additional Photos (4), there should be 5 sections starting with Exterior with 3 exterior phtos, then Kitchen with 2 kitchen photos, etc.  If the user clicks Additional Photos from the Image Nav Bar, the page should jump to the Additional Photos section.
+- [ ] If a user clicks any image, the view should change to an individual image.  The background of the whole page should black with the only thing visible on the page is the full size image, as large as possible to fit on the screen with as little padding as possible.  There should be a right arrow, left arrow to go to the next or preview image in the array.  And only one "X" to close the Individual Image view and return to the Property Image Page.  The arrows should move through all the property images in one long sequence.
+- [ ] Deleting images by admin or host will not be done from this page.
+
+### 5.3 Homes page
+#### Description
+The Homes page or /homes should list all the properties.  Clicking Homes in main menu should go to the /homes page.  User should be able to filter this list by lake, city, number of rooms, number of baths, amenities.  From the homepage, if a user clicks a lake card from the Explore the Finger Lakes, the user should go to the Homes list of properties filtered for that lake.  For example: if a user clicks Seneca Lake, the user should go to /homes and list all the properties where the lake = "Seneca Lake".
+
+### 5.4 Lake SVGs for Homepage
+#### Description
+On the homepage in the "Explore the Finger Lakes" section, there are boxes with different shades of blue with Lake Name and a brief 2 - 3 word description.  I would like to add a blue-100 SVG of the lake.  In the public/lake-svg directory there are SVGs for each lake.  "Seneca Lake" = Seneca-Lake.svg.  Make the SVGs blue-100.
 ---
 
 ## 6. Implementation Plan
@@ -377,11 +399,18 @@ If you see browser errors such as `[GET] "https://flxvacations.com/api/propertie
 
 We consider the release successful when:
 
-- [ ] 
+- [ ] Error: [POST] "https://flxvacations.com/api/upload/image": 413; error when admin tried to add 5th photo.
 - [ ] 
 - [ ] 
 
 ---
+
+## 8. Known Issues
+### 8.1 Known Issues - Oustanding
+- [ ] When running in Dev mode, Error: Error: [GET] "http://localhost:7000/api/properties": <no response> Failed to fetch on initial load, but loads when refresh.  No error on backend api in console logged.
+- [ ] When running in Dev mode, Error: Error: [GET] "http://localhost:7000/api/properties/the-onyx-chalet-by-keuka-lake": <no response> Failed to fetch on initial load, but loads when refresh. No error on backend api in console logged.
+- [ ] As an Admin, when I click edit on a property page I get warning "You don’t have permission to edit this property."  As an Admin, I should be able to edit any page.
+- [ ] As an Admin, I was not able to add an image to listing, I got "Not authorized, user not found"
 
 ## Appendix
 
