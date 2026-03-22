@@ -175,13 +175,23 @@ Every user should have a password and the backend should hash these values so th
 
 ## 5. Features
 
+### Implementation order (recommended)
+
+| Step | Section | Rationale |
+|------|---------|-----------|
+| 1 | **5.6** Properties — location, geocoding, `beds`, `guests` | API + model changes power card copy (`city`, `stateCode`, beds line) and map pins for **5.3**. |
+| 2 | **5.5** Vacation Rental Summary Cards | Reusable `VacaRentSumCard` (or equivalent) used on **5.3** `/homes` and `/homes/[slug]`, homepage, etc. |
+| 3 | **5.3** Homes & Finger Lake pages | Builds on **5.5** + **5.6**; filters and map need `location` / `lake` and card fields. |
+
+Sections **5.1**, **5.2**, and **5.4** remain independent; order above applies to **5.6 → 5.5 → 5.3** only.
+
 ### 5.1 Images
 
 #### Description
 The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  
 
 #### Design
-- [ ] In the Featured Vacation Rentals section, the grid is a grid of cards with properties.  These cards are called **Property Summary Cards**.  The Property Summary Card should use the main image as the image in this card.  The aspect ratio should be 4:3 where the long edge is the horizontal edge.
+- [x] In the Featured Vacation Rentals section, the grid is a grid of cards with properties.  These cards use **`VacaRentSumCard`** ([vacation-rental-summary-cards.md](vacation-rental-summary-cards.md)).  The main image uses a **3:2** aspect ratio (long edge horizontal), matching the vacation rental summary card spec.
 - [ ] Main menu is currently 1280 pixels wide in lg screen size.  Make other sections on the same 1280 pixels wide on lg screens.  For example, Property Page 5 Image Collage looks to be 848 pixels wide.  property.description seems to be 848 pixels wide.  Sections on index.vue page seem to be 1232.
 - [ ] If user clicks on image in 5 Image Collage, the user goes to the section that photo is in.  Example:  If the user clicks a picture and that picture is a room type = "Kitchen", the user should go to the Property Photos Page to the Kitchen section.
 
@@ -211,6 +221,8 @@ The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF,
 ### Deployment / environment (action required)
 If you see browser errors such as `[GET] "https://flxvacations.com/api/properties/...": <no response> Failed to fetch` or similar for `/api/upload/image` or `/api/properties`, the frontend is calling the API at the wrong origin or the API is unreachable. **You need to:** (1) Set **NUXT_PUBLIC_API_BASE** in production to your vaca-api base URL (e.g. `https://your-vaca-api.example.com`), or (2) Configure your host (e.g. nginx) to proxy `/api` to the vaca-api server and keep **NUXT_PUBLIC_API_BASE** as same-origin. Ensure vaca-api CORS allows your frontend origin (see PRD 4.4).
 
+**Google Maps / Geocoding:** Enable billing, **Geocoding API** (server) and **Maps JavaScript API** (site map in §5.3), and use key restrictions that match how each key is used — see [google-maps-geocoding-setup.md](google-maps-geocoding-setup.md). A browser-restricted key used for server-side geocoding will fail (`REQUEST_DENIED`).
+
 ### 5.2 Property Images Page
 #### Description
 This page should display **all** images for a property on a page.  There should be a Image Nav Bar at the top of the page that sticks to the top like a submenu.  In the Image Nav Bar, each room type should be listed with the room type name and one image from with that room type.  Below the Image Nav Bar, **all** images for that property should be displayed in sections where each room type where there are images with that room type are displayed.  User can click a room type from the Image Nav Bar to jump to that section.  This should be laid out similar to [Himrod House - Photos](https://www.himrodhouse.com/himrod-house-orp5b6ae0bx#room-479395).  Below the larger image should be the description.
@@ -222,13 +234,49 @@ This page should display **all** images for a property on a page.  There should 
 - [ ] If a user clicks any image, the view should change to an individual image.  The background of the whole page should black with the only thing visible on the page is the full size image, as large as possible to fit on the screen with as little padding as possible.  There should be a right arrow, left arrow to go to the next or preview image in the array.  And only one "X" to close the Individual Image view and return to the Property Image Page.  The arrows should move through all the property images in one long sequence.
 - [ ] Deleting images by admin or host will not be done from this page.
 
-### 5.3 Homes page
-#### Description
-The Homes page or /homes should list all the properties.  Clicking Homes in main menu should go to the /homes page.  User should be able to filter this list by lake, city, number of rooms, number of baths, amenities.  From the homepage, if a user clicks a lake card from the Explore the Finger Lakes, the user should go to the Homes list of properties filtered for that lake.  For example: if a user clicks Seneca Lake, the user should go to /homes and list all the properties where the lake = "Seneca Lake".
+### 5.3 Homes page & [Finger Lake](finger-lake.md) Home Page
+**Depends on:** **5.5** and **5.6** (implement those first).
 
-### 5.4 Lake SVGs for Homepage
+#### Description
+The Homes page or /homes should list all the properties.  Clicking Homes in main menu should go to the /homes page.  User should be able to filter this list by lake, city, number of rooms, number of baths, amenities.  From the homepage, if a user clicks a lake card from the Explore the Finger Lakes, the user should go to corresponding [Finger Lake](finger-lake.md) page.  From any page, if a user clicks 'Seneca Lake', 'Cayuga Lake', 'Keuka Lake', or 'Canandaigua Lake' in footer, they should go to the corresponding [Finger Lake](finger-lake.md) page. For example: if a user clicks Seneca Lake, the user should go to /homes and list all the properties where the lake = "Seneca Lake".  Likewise there should be a similar Home page for each lake in [Finger Lake](finger-lake.md).  The main Homes Page should have an H2 "Finger Lakes Vacation Homes".  Each [Finger Lake](finger-lake.md) page should have an H2 "[Finger Lake](finger-lake.md) Vacation Homes" where lake = [Finger Lake](finger-lake.md).  The URL for the main Homes page should be /homes and each [Finger Lake](finger-lake.md) page should be /homes/[slug] where slug is the [Finger Lake](finger-lake.md) slug and this page should be filtered so all the homes on this [Finger Lake](finger-lake.md) should be where property lake = [Finger Lake](finger-lake.md).  /homes and homes/[Finger Lakes](finger-lake.md) should be a grid of [Vacation Rental Summary Cards](vacation-rental-summary-cards.md).  EXAMPLE: /homes/seneca-lake should be filtered to show properties where lake='Seneca Lake'.
+
+#### Success Criteria
+- [x] Create a page to display all homes (`/homes` and `/homes/[slug]`).
+- [ ] Page should have filter bar at the top (lake filter implemented; city, rooms, baths, amenities — outstanding).
+- [x] Page should have two columns: grid of [Vacation Rental Summary Cards](vacation-rental-summary-cards.md) and a Google Map.  On narrow screens, the map stacks above the cards (full width).
+- [x] Properties on that page should be plotted on the Google Map.
+- [x] Page should have pagination if the number of properties is > 20.
+
+
+
+### 5.4 Lake SVGs for Homepage (COMPLETED)
+#### Status = COMPLETED
 #### Description
 On the homepage in the "Explore the Finger Lakes" section, there are boxes with different shades of blue with Lake Name and a brief 2 - 3 word description.  I would like to add a blue-100 SVG of the lake.  In the public/lake-svg directory there are SVGs for each lake.  "Seneca Lake" = Seneca-Lake.svg.  Make the SVGs blue-100.
+
+
+### 5.5 Vacation Rental Summary Cards
+**Status:** COMPLETE  
+**Depends on:** **5.6** for `location.city`, `location.stateCode`, and `beds` (and related fields) on the card.
+
+#### Description
+See details in [Vacation Rental Summary Cards](vacation-rental-summary-cards.md).
+
+#### Success Criteria
+- [x] Reusable `VacaRentSumCard` on homepage (Featured Vacation Rentals), `/homes`, `/homes/[slug]`.
+- [x] Main image **3:2**, title **H3** (`text-md`), beds/bedrooms line, City ST from `location`; missing lines hidden.
+- [x] Stacked Tailwind card, rounded corners, link to property profile.
+
+### 5.6 Properties Collection Update - New Location Object & Rental Type
+**Status:** COMPLETE  
+**Implement before:** **5.5** and **5.3** (done).
+
+#### Description
+See details in [New Location Object](new-location-object.md). Align `location` shape with `vacation-rental-summary-cards.md` (e.g. `city`, `stateCode` for display) and [finger-lake.md](finger-lake.md) slugs for `/homes/[slug]`. Google Cloud setup for `GEOCODER_API_KEY`: [google-maps-geocoding-setup.md](google-maps-geocoding-setup.md).
+
+#### Success Criteria
+- [x] Geocoder, `GEOCODER_*` env, `location` + transient `address`, `beds`, `guests`, `lake` enum + `/homes/[slug]` alignment — per [new-location-object.md](new-location-object.md).
+
 ---
 
 ## 6. Implementation Plan

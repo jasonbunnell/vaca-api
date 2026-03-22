@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { geocodeAddress } = require('../utils/geocoder');
 
 function slugifyTitle(title) {
   if (!title) return '';
@@ -11,20 +12,39 @@ function slugifyTitle(title) {
     .replace(/-+/g, '-');
 }
 
+/** Aligned with docs/finger-lake.md display names + Other */
 const FINGER_LAKES = [
-  'Seneca Lake',
-  'Cayuga Lake',
-  'Keuka Lake',
-  'Canandaigua Lake',
-  'Skaneateles Lake',
-  'Owasco Lake',
-  'Cazenovia Lake',
-  'Otisco Lake',
-  'Honeoye Lake',
   'Conesus Lake',
   'Hemlock Lake',
+  'Canadice Lake',
+  'Honeoye Lake',
+  'Canandaigua Lake',
+  'Keuka Lake',
+  'Seneca Lake',
+  'Cayuga Lake',
+  'Owasco Lake',
+  'Skaneateles Lake',
+  'Otisco Lake',
   'Other',
 ];
+
+const locationSchema = new mongoose.Schema(
+  {
+    coordinates: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+    country: { type: String, default: '' },
+    countryCode: { type: String, default: '' },
+    city: { type: String, default: '' },
+    zipcode: { type: String, default: '' },
+    streetName: { type: String, default: '' },
+    streetNumber: { type: String, default: '' },
+    stateCode: { type: String, default: '' },
+    formattedAddress: { type: String, default: '' },
+  },
+  { _id: false }
+);
 
 const propertySchema = new mongoose.Schema(
   {
@@ -39,6 +59,16 @@ const propertySchema = new mongoose.Schema(
       index: true,
       trim: true,
     },
+    /** Used only as input for geocoding; stripped before persist (select: false + pre-save). */
+    address: {
+      type: String,
+      trim: true,
+      select: false,
+    },
+    location: {
+      type: locationSchema,
+      default: undefined,
+    },
     bedrooms: {
       type: Number,
       required: [true, 'Bedrooms is required'],
@@ -49,14 +79,29 @@ const propertySchema = new mongoose.Schema(
       required: [true, 'Bathrooms is required'],
       min: 0,
     },
+    /** Total beds (mattresses / bed count) for listing cards */
+    beds: {
+      type: Number,
+      min: 0,
+    },
+    /** Max occupancy */
+    guests: {
+      type: Number,
+      min: 1,
+    },
     description: {
       type: String,
       default: '',
     },
     lake: {
       type: String,
-      enum: FINGER_LAKES,
       default: '',
+      validate: {
+        validator(v) {
+          return v === '' || FINGER_LAKES.includes(v);
+        },
+        message: 'Invalid lake name',
+      },
     },
     amenities: {
       type: [String],
@@ -91,8 +136,22 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    omitUndefined: true,
   }
 );
+
+/** Geocode when `address` is provided; do not persist address. Runs before slug hook. */
+propertySchema.pre('save', async function (next) {
+  try {
+    if (this.address && String(this.address).trim()) {
+      this.location = await geocodeAddress(String(this.address).trim());
+      this.set('address', undefined);
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 propertySchema.pre('save', async function (next) {
   if (!this.isModified('title') && this.slug) return next();
@@ -102,7 +161,6 @@ propertySchema.pre('save', async function (next) {
   let slug = base;
   let counter = 1;
 
-  // Ensure slug uniqueness
   while (
     await mongoose.models.Property.exists({
       slug,
@@ -114,6 +172,35 @@ propertySchema.pre('save', async function (next) {
 
   this.slug = slug;
   next();
+});
+
+propertySchema.pre('findOneAndUpdate', async function (next) {
+  try {
+    const update = this.getUpdate() || {};
+    const $set = { ...(update.$set || {}) };
+    for (const key of Object.keys(update)) {
+      if (!key.startsWith('$')) {
+        $set[key] = update[key];
+      }
+    }
+    const address = $set.address;
+    if (!address || typeof address !== 'string' || !address.trim()) {
+      return next();
+    }
+    const location = await geocodeAddress(address.trim());
+    delete $set.address;
+    $set.location = location;
+    const rest = { ...update, $set };
+    for (const key of Object.keys(update)) {
+      if (!key.startsWith('$')) {
+        delete rest[key];
+      }
+    }
+    this.setUpdate(rest);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 propertySchema.pre('findOneAndUpdate', async function (next) {
@@ -139,10 +226,13 @@ propertySchema.pre('findOneAndUpdate', async function (next) {
     slug = `${base}-${counter++}`;
   }
 
-  if (!update.$set) update.$set = {};
-  update.$set.slug = slug;
-  this.setUpdate(update);
+  const newUpdate = { ...update };
+  if (!newUpdate.$set) newUpdate.$set = {};
+  newUpdate.$set.slug = slug;
+  this.setUpdate(newUpdate);
   next();
 });
 
-module.exports = mongoose.model('Property', propertySchema);
+const Property = mongoose.model('Property', propertySchema);
+Property.FINGER_LAKES = FINGER_LAKES;
+module.exports = Property;

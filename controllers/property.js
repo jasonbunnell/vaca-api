@@ -3,12 +3,37 @@ const Property = require('../models/Property');
 const { logAction } = require('../utils/securityLogger');
 const { deleteFromSpacesByUrl } = require('./upload');
 
-// @desc    Get all properties
+// @desc    Get all properties (optional: ?lake=Name&page=1&limit=20 → { items, total, page, limit })
 // @route   GET /api/properties
 // @access  Public
 exports.getProperties = async (req, res) => {
   try {
-    const properties = await Property.find().populate('host', 'name email role');
+    const { lake } = req.query;
+    const hasPagination = req.query.page != null || req.query.limit != null;
+    const page = Math.max(parseInt(String(req.query.page), 10) || 1, 1);
+    const limitRaw = parseInt(String(req.query.limit), 10);
+    const limit = Math.min(Math.max(Number.isNaN(limitRaw) ? 20 : limitRaw, 1), 100);
+
+    const q = {};
+    if (lake) {
+      q.lake = lake;
+    }
+
+    const base = Property.find(q).populate('host', 'name email role').sort({ createdAt: -1 });
+
+    if (hasPagination) {
+      const [items, total] = await Promise.all([
+        base
+          .clone()
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .exec(),
+        Property.countDocuments(q),
+      ]);
+      return res.json({ items, total, page, limit });
+    }
+
+    const properties = await base.exec();
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,6 +86,8 @@ exports.createProperty = async (req, res) => {
     if (isAdmin && req.body.host != null) {
       hostIds = Array.isArray(req.body.host) ? req.body.host : [req.body.host];
       hostIds = hostIds.filter(Boolean).map((id) => (typeof id === 'string' ? id : id?.toString?.() || id));
+    } else if (isAdmin && req.body.owner) {
+      hostIds = [String(req.body.owner).trim()].filter(Boolean);
     }
     if (hostIds.length === 0) {
       hostIds = [req.user._id];
@@ -69,7 +96,7 @@ exports.createProperty = async (req, res) => {
       return res.status(400).json({ error: 'At least one host is required.' });
     }
 
-    const { host, ...rest } = req.body;
+    const { host, owner, ...rest } = req.body;
     const property = await Property.create({
       ...rest,
       host: hostIds,
