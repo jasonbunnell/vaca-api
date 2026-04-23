@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "seed": "node seeder.js",
     "seed:import": "node seeder.js -i",
-    "seed:delete": "node seeder.js -d"
+    "seed:delete": "node seeder.js -d",
+    "seed:amenities": "node scripts/seed-amenities.js"
   },
   "author": "",
   "license": "MIT",

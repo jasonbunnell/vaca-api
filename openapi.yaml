@@ -15,6 +15,7 @@ tags:
   - name: Auth
   - name: Users
   - name: Properties
+  - name: Amenities
   - name: Upload
   - name: Health
 
@@ -59,6 +60,43 @@ components:
           type: string
           format: date-time
 
+    Amenity:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+          description: Stable slug (e.g. wifi, dock)
+        displayName:
+          type: string
+        category:
+          type: string
+          enum:
+            [
+              location,
+              essentials,
+              kitchen,
+              outside,
+              entertainment,
+              luxury,
+              environmentally-friendly,
+            ]
+        color:
+          type: string
+        icon:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
     Property:
       type: object
       properties:
@@ -84,6 +122,11 @@ components:
           description: User ObjectIds (populated as User objects in responses)
           items:
             $ref: "#/components/schemas/User"
+        amenities:
+          type: array
+          description: Amenity ObjectIds (populated as Amenity objects in responses)
+          items:
+            $ref: "#/components/schemas/Amenity"
         images:
           type: array
           maxItems: 50
@@ -415,11 +458,151 @@ paths:
         "404":
           description: User not found
 
+  /api/amenities:
+    get:
+      tags: [Amenities]
+      summary: List amenities
+      description: |
+        Public list of active amenities by default.
+        Optional `grouped=true` returns an object keyed by category.
+        `includeInactive=true` requires admin JWT.
+      parameters:
+        - name: grouped
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+        - name: includeInactive
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+      responses:
+        "200":
+          description: Array of amenities or grouped object
+        "401":
+          description: includeInactive without auth
+        "403":
+          description: includeInactive without admin
+    post:
+      tags: [Amenities]
+      summary: Create amenity
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName, category]
+              properties:
+                displayName:
+                  type: string
+                category:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+                icon:
+                  type: string
+                isActive:
+                  type: boolean
+      responses:
+        "201":
+          description: Created
+        "403":
+          description: Admin only
+
+  /api/amenities/{id}:
+    put:
+      tags: [Amenities]
+      summary: Update amenity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                category:
+                  type: string
+                description:
+                  type: string
+                color:
+                  type: string
+                icon:
+                  type: string
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated
+        "403":
+          description: Admin only
+        "404":
+          description: Not found
+    delete:
+      tags: [Amenities]
+      summary: Deactivate amenity (soft delete)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deactivated
+        "403":
+          description: Admin only
+        "404":
+          description: Not found
+
   /api/properties:
     get:
       tags: [Properties]
       summary: List properties
-      description: Public list of all properties.
+      description: |
+        Public list. Optional filters: lake, amenities (comma-separated slugs or ObjectIds),
+        amenityMatch=all|any (default all). Pagination via page & limit.
+      parameters:
+        - name: lake
+          in: query
+          schema:
+            type: string
+        - name: amenities
+          in: query
+          schema:
+            type: string
+          description: Comma-separated amenity names (slugs) or Mongo ObjectIds
+        - name: amenityMatch
+          in: query
+          schema:
+            type: string
+            enum: [all, any]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of properties

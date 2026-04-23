@@ -104,11 +104,7 @@ const propertySchema = new mongoose.Schema(
       },
     },
     amenities: {
-      type: [String],
-      default: [],
-    },
-    features: {
-      type: [String],
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Amenity' }],
       default: [],
     },
     images: {

@@ -2,13 +2,39 @@ const mongoose = require('mongoose');
 const Property = require('../models/Property');
 const { logAction } = require('../utils/securityLogger');
 const { deleteFromSpacesByUrl } = require('./upload');
+const { resolveAmenityFilterTokens } = require('../utils/amenityHelpers');
+
+function dedupeObjectIdStrings(ids) {
+  if (!Array.isArray(ids)) return ids;
+  const seen = new Set();
+  return ids.filter((id) => {
+    const s = String(id);
+    if (seen.has(s)) return false;
+    seen.add(s);
+    return true;
+  });
+}
+
+function parseCommaList(val) {
+  if (val == null) return [];
+  if (Array.isArray(val)) {
+    return val
+      .flatMap((v) => String(v).split(','))
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return String(val)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 // @desc    Get all properties (optional: ?lake=Name&page=1&limit=20 → { items, total, page, limit })
 // @route   GET /api/properties
 // @access  Public
 exports.getProperties = async (req, res) => {
   try {
-    const { lake } = req.query;
+    const { lake, amenityMatch } = req.query;
     const hasPagination = req.query.page != null || req.query.limit != null;
     const page = Math.max(parseInt(String(req.query.page), 10) || 1, 1);
     const limitRaw = parseInt(String(req.query.limit), 10);
@@ -19,7 +45,27 @@ exports.getProperties = async (req, res) => {
       q.lake = lake;
     }
 
-    const base = Property.find(q).populate('host', 'name email role').sort({ createdAt: -1 });
+    const amenityTokens = parseCommaList(req.query.amenities);
+    if (amenityTokens.length > 0) {
+      const amenityIds = await resolveAmenityFilterTokens(amenityTokens);
+      if (amenityIds.length === 0) {
+        if (hasPagination) {
+          return res.json({ items: [], total: 0, page, limit });
+        }
+        return res.json([]);
+      }
+      const mode = String(amenityMatch || 'all').toLowerCase() === 'any' ? 'any' : 'all';
+      if (mode === 'all') {
+        q.amenities = { $all: amenityIds };
+      } else {
+        q.amenities = { $in: amenityIds };
+      }
+    }
+
+    const base = Property.find(q)
+      .populate('host', 'name email role')
+      .populate('amenities', 'name displayName category color icon description isActive')
+      .sort({ createdAt: -1 });
 
     if (hasPagination) {
       const [items, total] = await Promise.all([
@@ -49,11 +95,15 @@ exports.getProperty = async (req, res) => {
     let property = null;
 
     // Prefer slug lookup so URLs can be /properties/:slug
-    property = await Property.findOne({ slug: id }).populate('host', 'name email role');
+    property = await Property.findOne({ slug: id })
+      .populate('host', 'name email role')
+      .populate('amenities', 'name displayName category color icon description isActive');
 
     // Fallback to ObjectId for existing ID-based URLs
     if (!property && mongoose.Types.ObjectId.isValid(id)) {
-      property = await Property.findById(id).populate('host', 'name email role');
+      property = await Property.findById(id)
+        .populate('host', 'name email role')
+        .populate('amenities', 'name displayName category color icon description isActive');
     }
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
@@ -69,7 +119,9 @@ exports.getProperty = async (req, res) => {
 // @access  Private
 exports.getMyProperties = async (req, res) => {
   try {
-    const properties = await Property.find({ host: req.user._id }).populate('host', 'name email role');
+    const properties = await Property.find({ host: req.user._id })
+      .populate('host', 'name email role')
+      .populate('amenities', 'name displayName category color icon description isActive');
     res.json(properties);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -97,12 +149,17 @@ exports.createProperty = async (req, res) => {
     }
 
     const { host, owner, ...rest } = req.body;
+    if (Array.isArray(rest.amenities)) {
+      rest.amenities = dedupeObjectIdStrings(rest.amenities);
+    }
     const property = await Property.create({
       ...rest,
       host: hostIds,
     });
     logAction('property-create', { userId: req.user._id, success: true, detail: { propertyId: property._id } });
-    const populated = await Property.findById(property._id).populate('host', 'name email role');
+    const populated = await Property.findById(property._id)
+      .populate('host', 'name email role')
+      .populate('amenities', 'name displayName category color icon description isActive');
     res.status(201).json(populated);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -155,10 +212,16 @@ exports.updateProperty = async (req, res) => {
       delete update.host;
     }
 
+    if (Array.isArray(update.amenities)) {
+      update.amenities = dedupeObjectIdStrings(update.amenities);
+    }
+
     const property = await Property.findByIdAndUpdate(req.params.id, update, {
       new: true,
       runValidators: true,
-    }).populate('host', 'name email role');
+    })
+      .populate('host', 'name email role')
+      .populate('amenities', 'name displayName category color icon description isActive');
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }

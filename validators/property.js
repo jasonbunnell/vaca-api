@@ -1,5 +1,24 @@
 const { body } = require('express-validator');
+const mongoose = require('mongoose');
 const Property = require('../models/Property');
+const { validateActiveAmenityIds } = require('../utils/amenityHelpers');
+
+const amenitiesBodyValidator = body('amenities')
+  .optional()
+  .isArray()
+  .withMessage('amenities must be an array')
+  .custom(async (arr) => {
+    if (!Array.isArray(arr)) return false;
+    const ids = arr.map((x) => String(x).trim()).filter(Boolean);
+    for (const id of ids) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error('Each amenity must be a valid Mongo ObjectId');
+      }
+    }
+    const check = await validateActiveAmenityIds(ids);
+    if (!check.ok) throw new Error(check.message);
+    return true;
+  });
 
 const lakeValidator = body('lake')
   .optional()
@@ -20,8 +39,7 @@ const createProperty = [
   body('beds').isInt({ min: 0 }).withMessage('Beds must be a non-negative integer'),
   body('guests').isInt({ min: 1 }).withMessage('Guests (max occupancy) must be at least 1'),
   lakeValidator,
-  body('amenities').optional().isArray(),
-  body('features').optional().isArray(),
+  amenitiesBodyValidator,
   body('host')
     .optional()
     .custom((v) => {
@@ -41,8 +59,7 @@ const updateProperty = [
   body('beds').optional().isInt({ min: 0 }).withMessage('Beds must be a non-negative integer'),
   body('guests').optional().isInt({ min: 1 }).withMessage('Guests must be at least 1'),
   lakeValidator,
-  body('amenities').optional().isArray(),
-  body('features').optional().isArray(),
+  amenitiesBodyValidator,
   body('host')
     .optional()
     .custom((v) => {

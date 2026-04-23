@@ -52,3 +52,30 @@ exports.authorize = (...roles) => {
   };
 };
 
+/**
+ * If Authorization Bearer JWT is present and valid, attach req.user; otherwise continue.
+ * Used for public routes that have admin-only query options (e.g. GET /api/amenities?includeInactive=true).
+ */
+exports.optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (!token) {
+      return next();
+    }
+    token = String(token).trim().replace(/\s+/g, '').replace(/^["']|["']$/g, '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id ?? decoded._id;
+    if (!userId || (typeof userId === 'string' && userId.length < 10)) {
+      return next();
+    }
+    const user = await User.findById(userId);
+    if (user) req.user = user;
+    next();
+  } catch {
+    next();
+  }
+};
+

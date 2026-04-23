@@ -7,6 +7,7 @@ require('dotenv').config({ override: true });
 const connectDB = require('./config/db');
 const User = require('./models/User');
 const Property = require('./models/Property');
+const { legacyAmenityStringsToIds } = require('./utils/amenityHelpers');
 
 const usersPath = path.join(__dirname, '_data', 'newUsers.json');
 const propertiesPath = path.join(__dirname, '_data', 'newProperty.json');
@@ -41,16 +42,21 @@ async function importProperties() {
     acc[u.email.toLowerCase()] = u._id;
     return acc;
   }, {});
-  const propertiesWithHost = propertiesData.map((p) => {
-    const { ownerEmail, hostEmail, host, ...rest } = p;
+  const propertiesWithHost = [];
+  for (const p of propertiesData) {
+    const { ownerEmail, hostEmail, host, amenities: amenityLabels, ...rest } = p;
     const email = (hostEmail || ownerEmail)?.toLowerCase();
     const firstHostId = email ? userByEmail[email] : null;
     if (!firstHostId) throw new Error(`No user found for host/owner email: ${email || hostEmail || ownerEmail}`);
     const hostIds = Array.isArray(host) && host.length
       ? host.map((id) => (typeof id === 'string' ? id : id?.toString?.())).filter(Boolean)
       : [firstHostId];
-    return { ...rest, host: hostIds };
-  });
+    let amenityIds = [];
+    if (Array.isArray(amenityLabels)) {
+      amenityIds = await legacyAmenityStringsToIds(amenityLabels);
+    }
+    propertiesWithHost.push({ ...rest, host: hostIds, amenities: amenityIds });
+  }
   const created = await Property.create(propertiesWithHost);
   return created;
 }

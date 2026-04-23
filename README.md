@@ -6,7 +6,7 @@ Backend API for [flxvacations.com](https://flxvacations.com). Node, Express, Mon
 
 - Express server with `server.js` entry point
 - MongoDB connection via `config/db.js` (uses `MONGODB_URI` or local default)
-- **Models:** User (name, email, role), Property (title, bedrooms, bathrooms, description, amenities, features, owner)
+- **Models:** User (name, email, role), Property (title, bedrooms, bathrooms, description, amenities, owner)
 - **Controllers & routes:** CRUD for `/api/properties` and `/api/users`
 - Auth middleware deferred to Phase 2
 
@@ -54,6 +54,18 @@ Create a user first (e.g. with Postman or `curl`), then create a property with t
 ## Seeder
 
 Load or clear test data (uses `config/.env` for MongoDB).
+
+**Amenities (PRD §5.7):** seed the amenities catalog before importing properties (properties store `amenities` as Amenity ObjectIds).
+
+```bash
+npm run seed:amenities
+```
+
+**Existing database:** if properties still have legacy string `amenities`, run after seeding amenities:
+
+```bash
+node scripts/migrate-property-amenities-to-refs.js
+```
 
 ```bash
 # Import: creates users and properties from _data/newUsers.json and _data/newProperty.json

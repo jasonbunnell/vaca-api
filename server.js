@@ -10,6 +10,7 @@ require('dotenv').config({ override: true });
 const connectDB = require('./config/db');
 
 const propertyRoutes = require('./routes/property');
+const amenityRoutes = require('./routes/amenity');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
@@ -39,6 +40,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/amenities', amenityRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
