@@ -16,6 +16,8 @@ module.exports = [
   { name: 'wifi', displayName: 'WiFi', category: 'essentials', description: 'Property has WiFi' },
   { name: 'hair-dryer', displayName: 'Hair dryer', category: 'essentials', description: 'Property has hair dryer' },
   { name: 'self-check-in', displayName: 'Self check-in', category: 'essentials', description: 'Property has a digital keypad and allows self check-in' },
+  { name: 'pets-allowed', displayName: 'Pets allowed', category: 'essentials', description: 'Property allows pets' },
+  { name: 'free-parking', displayName: 'Free parking', category: 'essentials', description: 'Property has free on-site parking' },
   { name: 'stovetop-oven', displayName: 'Oven & stovetop', category: 'kitchen', description: 'Property has oven & stovetop' },
   { name: 'refrigerator', displayName: 'Refrigerator', category: 'kitchen', description: '' },
   { name: 'microwave', displayName: 'Microwave', category: 'kitchen', description: '' },

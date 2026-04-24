@@ -34,7 +34,7 @@ function parseCommaList(val) {
 // @access  Public
 exports.getProperties = async (req, res) => {
   try {
-    const { lake, amenityMatch, where, guests } = req.query;
+    const { lake, amenityMatch, where, guests, minBedrooms, minBeds, minBathrooms } = req.query;
     const hasPagination = req.query.page != null || req.query.limit != null;
     const page = Math.max(parseInt(String(req.query.page), 10) || 1, 1);
     const limitRaw = parseInt(String(req.query.limit), 10);
@@ -55,6 +55,21 @@ exports.getProperties = async (req, res) => {
       if (!Number.isNaN(g) && g > 0) {
         q.guests = { $gte: g };
       }
+    }
+
+    if (minBedrooms) {
+      const n = parseInt(String(minBedrooms), 10);
+      if (!Number.isNaN(n) && n > 0) q.bedrooms = { $gte: n };
+    }
+
+    if (minBeds) {
+      const n = parseInt(String(minBeds), 10);
+      if (!Number.isNaN(n) && n > 0) q.beds = { $gte: n };
+    }
+
+    if (minBathrooms) {
+      const n = parseInt(String(minBathrooms), 10);
+      if (!Number.isNaN(n) && n > 0) q.bathrooms = { $gte: n };
     }
 
     const amenityTokens = parseCommaList(req.query.amenities);

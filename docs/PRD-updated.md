@@ -1,6 +1,6 @@
 # Product Requirements Document — FLX Vacations
 
-**Version:** 0.6 (Draft)
+**Version:** 0.7 (Draft)
 **First draft:** Feb 12, 2026
 **This revision:** Apr 24, 2026
 **Owner:** Jason
@@ -393,12 +393,16 @@ The pricing page has been rewritten to match the tier breakdown below. Boost and
 
 #### Backend
 
-- **B-04.1 — `GET /api/properties` — search params:** Extend the public properties endpoint to accept the following optional query parameters:
-  - `where` (string): case-insensitive text match against `location.city` OR `lake`. Example: `?where=Seneca` matches properties on Seneca Lake. `?where=Penn Yan` matches properties in Penn Yan.
-  - `checkIn` (ISO date string): first night of stay.
-  - `checkOut` (ISO date string): last night of stay. When both `checkIn` and `checkOut` are provided, exclude properties that have a `PropertyAvailability` record overlapping the requested range. Properties without any availability records (i.e., non-OwnerRez properties) are **not** excluded — they are always shown.
-  - `guests` (integer): filter to properties where `property.guests >= guests`.
-  - All existing filters (`lake`, `amenities`, `amenityMatch`) remain supported and combinable with the new params.
+- **B-04.1 — `GET /api/properties` — search params:** Extend the public properties endpoint to accept the following optional query parameters. **Done Apr 24, 2026** for `where`, `guests`, `minBedrooms`, `minBeds`, `minBathrooms`, and `amenities`; `checkIn`/`checkOut` availability filtering is pending OwnerRez integration (F-08).
+  - `where` (string): case-insensitive text match against `location.city` OR `lake`. Example: `?where=Seneca` matches properties on Seneca Lake. `?where=Penn Yan` matches properties in Penn Yan. **Done.**
+  - `checkIn` (ISO date string): first night of stay. **Pending** (requires PropertyAvailability data from OwnerRez sync).
+  - `checkOut` (ISO date string): last night of stay. When both `checkIn` and `checkOut` are provided, exclude properties that have a `PropertyAvailability` record overlapping the requested range. Properties without any availability records (i.e., non-OwnerRez properties) are **not** excluded — they are always shown. **Pending.**
+  - `guests` (integer): filter to properties where `property.guests >= guests`. **Done.**
+  - `minBedrooms` (integer): filter to properties where `property.bedrooms >= minBedrooms`. **Done.**
+  - `minBeds` (integer): filter to properties where `property.beds >= minBeds`. **Done.**
+  - `minBathrooms` (integer): filter to properties where `property.bathrooms >= minBathrooms`. **Done.**
+  - `amenities` (comma-separated slugs): filter by one or more amenity slugs, e.g. `?amenities=wifi,pets-allowed`. The `amenityMatch` param controls AND (`all`) vs OR (`any`) logic; default is `all`. **Done (pre-existing).**
+  - All existing filters (`lake`, `amenityMatch`) remain supported and combinable with the new params.
   - Pagination: `page` and `limit` (default limit 20).
 
 #### Frontend
@@ -417,6 +421,27 @@ The pricing page has been rewritten to match the tier breakdown below. Boost and
 - **F-04.3 — /homes page search bar:** Mount the `SearchBar` component at the top of the /homes page. On mount, read URL query params and populate fields. On field change or submit, update query params and re-fetch properties. The filter bar (lake selector, amenity filters) and the search bar coexist and their filters are combined.
 
 - **F-04.4 — Quick category filter pills (homepage):** The existing horizontal pill row (🏡 All, 🌊 Lakefront, 🍷 Vineyard, etc.) filters by amenity or lake. These should remain and combine with the search bar filters. Clicking a pill sets the appropriate filter param.
+
+- **F-04.5 — Filter Panel (sliding panel on /homes and /homes/[slug]):** **Done Apr 24, 2026.** A `FilterPanel.vue` component slides up from the bottom of the screen when the Filter button in the `SearchBar` is tapped. Design:
+  - **Layout:** Full-screen on mobile (95vh), partial-screen on desktop (up to 82vh). Drag handle, header with title "Filters" and X close button, scrollable body, sticky footer "Filter" button.
+  - **Trigger:** Filter button (funnel icon, blue square) appears to the right of the search bar white card on `/homes` and `/homes/[slug]` pages only (controlled by `showFilter` prop on `SearchBar`). A badge on the button shows the active filter count.
+  - **Clear all:** A "Clear all" text link appears to the right of the filter button when `filterCount > 0`. Removes all filter params from the URL while preserving `where` and `guests`.
+  - **Applied Filters section:** At the top of the scrollable body (visible when any filter is active). Renders one blue chip per active filter (amenity slugs shown with their `displayName`, room minimums shown as "2+ Bedrooms" etc.). Each chip has an × to remove that individual filter immediately without closing the panel.
+  - **Top Amenities:** Four large-pill quick-select buttons displayed in a 2×2 grid (4-column on sm+) with colored icon + label:
+    - Pets allowed (amber, paw icon)
+    - Free parking (green, P icon)
+    - Self check-in (purple, key icon)
+    - WiFi (blue, wifi icon)
+    Selecting a top amenity also reflects in and is linked to the grouped amenities section below (both use the same `selectedSlugs` ref keyed on amenity `name` slug).
+  - **Rooms & Beds:** Three steppers — Bedrooms, Beds, Bathrooms. Display "Any" when value is 0; increment/decrement buttons; max 8.
+  - **Grouped Amenities:** Fetches `GET /api/amenities?grouped=true` on mount. Same category order as `AmenitiesGroupList`. Toggle buttons use `amenity.name` (slug) as the selection key so state serializes cleanly to URL.
+  - **Apply:** "Filter" button builds a URL query from internal state (preserving `where` / `guests`), calls `navigateTo` to the same path with updated params, and emits `close`. The parent pages watch these query params and re-fetch via `useFetch`.
+  - **Filter count:** `amenities` comma-list length + 1 per room minimum > 0. Displayed in badge on filter button.
+  - **URL persistence:** All filter state is stored in URL query params: `amenities=wifi,pets-allowed&minBedrooms=2&minBeds=3&minBathrooms=1`. This means filter state survives page refresh and is shareable via URL.
+  - **Backend:** `minBedrooms`, `minBeds`, `minBathrooms` query params added to `GET /api/properties` (see B-04.1). The `amenities` slug-based filter was pre-existing via `resolveAmenityFilterTokens`.
+  - **Amenity seed:** `pets-allowed` and `free-parking` added to DB via `scripts/add-filter-amenities.js`. Seed data file updated.
+
+- **F-04.6 — Google Maps Map ID:** **Done Apr 24, 2026.** Created a Google Cloud Map ID (`18963ad839ddf1d520a72b2d`, type: JavaScript/Raster) in Google Cloud Console → Maps Platform → Map Management. Set `NUXT_PUBLIC_GOOGLE_MAPS_MAP_ID` in `ecosystem.config.cjs`. `HomesMap.vue` reverted to `AdvancedMarkerElement` with the `mapId` prop. `gmp-click` event used (required for AdvancedMarkerElement). InfoWindow opens on pin click.
 
 ---
 
@@ -845,3 +870,4 @@ STRIPE_PRICE_PRO_LIFETIME_LAUNCH=price_xxxx
 | Apr 24, 2026 | 0.4 | Jason | F-01.1 fixed (amenity display with grouping). F-01.2 fixed (reviews zero state). B-01.1–B-01.3 confirmed pre-existing fixes. F-03 frontend complete: AmenitiesGroupList component built, wired to create/edit forms and profile page. F-05 Google Maps implemented: API key configured, hover sync, InfoWindow click overlays, lake pre-centering. GA4 (G-WXSET9QNSD) added via nuxt.config.ts head scripts. BUG-01, BUG-02, BUG-03, BUG-05, BUG-09 closed. BUG-08 deferred. |
 | Apr 25, 2026 | 0.5 | Jason | F-05 map fully working in production: root cause of blank grey map (zero-height `mapEl` due to `lg:h-full` CSS circular dependency with `self-start` flex parent) identified and fixed. API key moved to `ecosystem.config.cjs` PM2 env block. F-05.3a custom map pins added as next pending task. BUG-09 updated with full fix details. |
 | Apr 24, 2026 | 0.6 | Jason | B-01.4 fixed: `onMounted` client-side retry added to `/homes`, `/homes/[slug]`, and `/properties/[id]` pages to recover from dev-mode SSR fetch failures. BUG-04 closed. F-01.4 updated to document the deliberate decision to link only the top 4 lakes in the footer. BUG-08 closed as by design. All F-01 items are now resolved. |
+| Apr 24, 2026 | 0.7 | Jason | F-04 Filter Panel complete: `FilterPanel.vue` built and wired into `/homes` and `/homes/[slug]`. Applied filter chips, top amenity quick-selects (pets, parking, check-in, wifi), room/bed steppers (max 8), grouped amenities (slug-keyed), URL-persisted filter state, filter count badge, clear all. B-04.1 extended: `minBedrooms`, `minBeds`, `minBathrooms` added to `GET /api/properties`. `pets-allowed` and `free-parking` amenities seeded to production DB. F-04.5 and F-04.6 added to PRD. Google Maps Map ID created and documented. `SearchBar.vue` filter button infrastructure added. Unused lake dropdown state removed from `/homes`. |
