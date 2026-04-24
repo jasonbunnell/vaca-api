@@ -1,8 +1,8 @@
 # Product Requirements Document — FLX Vacations
 
-**Version:** 0.3 (Draft)
+**Version:** 0.6 (Draft)
 **First draft:** Feb 12, 2026
-**This revision:** Apr 23, 2026
+**This revision:** Apr 24, 2026
 **Owner:** Jason
 
 ---
@@ -305,23 +305,23 @@ These bugs are currently visible to guests on the live site.
 
 #### Backend
 
-- **B-01.1 — Amenity population on property reads:** `GET /api/properties` and `GET /api/properties/:id` must populate the `amenities` array with full Amenity documents (at minimum: `_id`, `name`, `displayName`, `category`). Currently raw ObjectIds are returned. Add `.populate('amenities', '_id name displayName category')` to all property read queries.
+- **B-01.1 — Amenity population on property reads:** ~~Add `.populate('amenities', ...)` to all property read queries.~~ **Fixed (pre-existing).** All property reads already call `.populate('amenities', 'name displayName category color icon description isActive')`.
 
-- **B-01.2 — Admin property authorization:** Fix the bug where an Admin user receives "You don't have permission to edit this property." The authorization middleware for property PUT/DELETE routes must check `req.user.role === 'admin'` in addition to checking if the user's `_id` is in `property.host`.
+- **B-01.2 — Admin property authorization:** ~~Fix admin permission check on property PUT/DELETE.~~ **Fixed (pre-existing).** `updateProperty` and `deleteProperty` both check `req.user.role === 'admin'`.
 
-- **B-01.3 — Admin image upload authorization:** Fix "Not authorized, user not found" error when an admin attempts to upload an image to a property. The `POST /api/upload/image` route must accept requests from admin-role users regardless of whether they are in the property's host array.
+- **B-01.3 — Admin image upload authorization:** ~~Fix "Not authorized" on admin image upload.~~ **Fixed (pre-existing).** `uploadImage` checks `isAdmin` and allows upload regardless of host membership.
 
-- **B-01.4 — Dev-mode initial fetch failures:** Investigate and fix the intermittent `Failed to fetch` errors on initial load at `GET /api/properties` and `GET /api/properties/:slug` in development mode. These likely relate to server startup timing or Nuxt SSR hydration order. Add a retry or loading-state resolution on the frontend as a fallback.
+- **B-01.4 — Dev-mode initial fetch failures:** ~~Investigate and fix the intermittent `Failed to fetch` errors on initial load at `GET /api/properties` and `GET /api/properties/:slug` in development mode.~~ **Fixed Apr 24, 2026.** Root cause: Nuxt SSR renders `/homes`, `/homes/[slug]`, and `/properties/[id]` before the API on port 7000 finishes connecting to MongoDB, so the first server-side `useFetch` call fails. Fix: added `onMounted(() => { if (error.value) refresh() })` to all three pages so the fetch is retried on the client when SSR errored.
 
 #### Frontend
 
-- **F-01.1 — Amenity display on property profile page:** The Amenities section currently renders raw ObjectId strings. Once the API returns populated amenity objects (B-01.1), update the property profile page to render `amenity.displayName` for each amenity. Group them by `amenity.category` using the display order: `essentials → location → kitchen → outside → entertainment → luxury → environmentally-friendly`.
+- **F-01.1 — Amenity display on property profile page:** ~~Renders raw ObjectId strings.~~ **Fixed Apr 24, 2026.** Profile page now uses a `groupedAmenities` computed that filters nulls, groups by category in the fixed PRD order, and renders `amenity.displayName` under category headers (Essentials, Location, Kitchen, Outside, Entertainment, Luxury, Eco-Friendly).
 
-- **F-01.2 — Guest reviews zero state:** When a property has no reviews, replace the `0.0` scores with a friendly message: "No reviews yet — be the first to stay!" Do not show numeric scores if there are no reviews.
+- **F-01.2 — Guest reviews zero state:** ~~Displays `0.0` scores when no reviews.~~ **Fixed Apr 24, 2026.** Rating bars are wrapped in `v-if="reviews.length > 0"`. Zero state shows "No reviews yet — be the first to stay!"
 
 - **F-01.3 — Footer broken links:** ~~Replace all `href="#"` footer links with either real URLs or remove the link.~~ **Fixed Apr 23, 2026.** All footer links now route to real pages. "Community forum" was removed. "Help center" was replaced with "Documentation" (`/documentation`). "Contact us" routes to `/contact`, "Privacy policy" routes to `/privacy`. All three are placeholder pages using the default layout.
 
-- **F-01.4 — Footer missing lakes:** The footer's Finger Lakes section only links to 4 of 11 lakes. Add links for all 11: Conesus, Hemlock, Canadice, Honeoye, Canandaigua, Keuka, Seneca, Cayuga, Owasco, Skaneateles, Otisco.
+- **F-01.4 — Footer lake links:** The footer's Finger Lakes section links to the top 4 lakes by listing volume (Seneca, Cayuga, Keuka, Canandaigua). The remaining 7 lakes will not be added to the footer until listing volume justifies them. All 11 lakes remain accessible via the /homes lake selector. See F-10.7 for internal linking strategy.
 
 ---
 
@@ -371,23 +371,19 @@ The pricing page has been rewritten to match the tier breakdown below. Boost and
 
 #### Backend
 
-- **B-03.1 — Seed Amenities collection:** If not already seeded, run a seeder that creates one Amenity document for every row in `amenities.md`. Fields: `name` (slug from the Amenity column), `displayName` (Display Text column), `category`, `description`, `isActive: true`.
+- **B-03.1 — Seed Amenities collection:** **Done (pre-existing).** Seed script exists at `scripts/seed-amenities.js` and has been run in production.
 
-- **B-03.2 — `GET /api/amenities` — grouped response:** Support `?grouped=true` query param. When `grouped=true`, return amenities as an object keyed by category in this fixed display order: `essentials`, `location`, `kitchen`, `outside`, `entertainment`, `luxury`, `environmentally-friendly`. Each key contains an array of active amenity objects (`_id`, `name`, `displayName`, `category`).
+- **B-03.2 — `GET /api/amenities` — grouped response:** **Done (pre-existing).** `?grouped=true` is fully implemented in the amenity controller, returning categories in the fixed display order.
 
 - **B-03.3 — Property amenity validation:** On `POST /api/properties` and `PUT /api/properties/:id`, validate that all submitted `amenities` values are ObjectIds that correspond to active Amenity documents. Return a clear validation error listing any invalid IDs.
 
 #### Frontend
 
-- **F-03.1 — `AmenityPill` component:** Create a single reusable pill/badge component that accepts an amenity object and a selected boolean. Renders `amenity.displayName`. Unselected state: neutral Tailwind style (e.g., `bg-gray-100 text-gray-700 border border-gray-300`). Selected state: inverted/contrast style (e.g., `bg-gray-900 text-white border border-gray-900`). Must include `button` element with `aria-pressed` for keyboard accessibility and focus ring.
+- **F-03.1/F-03.2/F-03.3 — Amenity components:** **Done Apr 24, 2026.** Built as a single `AmenitiesGroupList.vue` component (combines Pill + Group + List responsibilities). Fetches `GET /api/amenities?grouped=true` on mount, renders all amenities grouped by category as toggle buttons. Deselected: white bg, grey border/text. Selected: blue bg, white text. Accepts `selectedIds: string[]` prop, emits `update:selectedIds`. Separate AmenityPill and AmenityGroup components can be split out when F-04 filter bar is built.
 
-- **F-03.2 — `AmenityGroup` component:** Accepts a `category` label (string) and an `amenities` array. Renders a category header (e.g., "Essentials") followed by a flex-wrap row of `AmenityPill` components. Emits toggle events upward.
+- **F-03.4 — Property create/edit form — amenities section:** **Done Apr 24, 2026.** Replaced the hardcoded 18-item checkbox list in both `create.vue` and `edit/[id].vue` with `<AmenitiesGroupList v-model:selectedIds="form.amenities" />`. Edit form watch handler now correctly extracts `_id` strings from populated Amenity objects to prevent data corruption on save.
 
-- **F-03.3 — `AmenitiesGroupList` component:** Composes multiple `AmenityGroup` components. Fetches from `GET /api/amenities?grouped=true` on mount. Renders categories in the fixed order: `essentials → location → kitchen → outside → entertainment → luxury → environmentally-friendly`. Any unknown category falls under "Other" at the end. Accepts a `selectedIds` array prop and emits `update:selectedIds` on toggle. This component is used in both the property create/edit form and the /homes filter bar.
-
-- **F-03.4 — Property create/edit form — amenities section:** Replace any existing amenities input with the `AmenitiesGroupList` component. Selected amenity `_id` values are submitted in the property payload as the `amenities` array.
-
-- **F-03.5 — Property profile page — grouped amenities display:** On the property detail page, display amenities grouped by category using `AmenityGroup` for rendering. No toggle behavior on this page — pills are display-only. Show category headers only for categories that the property has at least one amenity in.
+- **F-03.5 — Property profile page — grouped amenities display:** **Done Apr 24, 2026.** See F-01.1 above — profile page groups and displays amenities by category in display-only mode.
 
 ---
 
@@ -434,21 +430,21 @@ The pricing page has been rewritten to match the tier breakdown below. Boost and
 
 #### Frontend
 
-- **F-05.1 — Fix `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`:** The map currently shows "Set `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` in your environment to show the map." Confirm the variable is set in the production `.env` and consumed via `useRuntimeConfig().public.googleMapsApiKey`. The `GEOCODER_API_KEY` is a server-side key and must NOT be used for the browser map widget.
+- **F-05.1 — Fix `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY`:** **Done Apr 24, 2026.** Key set in `ecosystem.config.cjs` PM2 env block and baked into the production build. Map no longer shows the "Set key" fallback message.
 
-- **F-05.2 — /homes two-column layout:** The /homes page body uses a two-column layout:
-  - Left column (~35% width): vertically scrollable grid of Vacation Rental Summary Cards.
-  - Right column (~65% width): Google Map, sticky (fixed to viewport height, does not scroll with the list).
-  - On mobile (`sm` breakpoint): map is hidden; show only the card list. Provide a "Show map" toggle button that swaps the view to the map only, with a "Show list" button to return.
+- **F-05.2 — /homes two-column layout:** **Done (desktop) Apr 24, 2026.** Two-column layout implemented: sticky map sidebar (right, 480px wide) + scrollable card grid (left). Root cause of blank grey map (zero-height `mapEl` due to CSS `h-full` circular dependency) fixed Apr 25, 2026 by replacing `lg:h-full` with concrete `lg:h-[520px]` on the map container. Mobile map toggle ("Show map" / "Show list") not yet implemented.
 
-- **F-05.3 — Map pins:** Each property is plotted as a map pin at its `location.coordinates`. Pin style:
-  - Default: rounded pill showing the rate range (if the property is Boost/Pro with rate info) or a house icon for Free listings.
-  - Hovered/active: pin elevates with a shadow.
-  - Clicking a pin opens a small info card overlay (property main image, title, beds, city) with a link to the property profile.
+- **F-05.3 — Map pins:** **Partially done Apr 24, 2026.** Properties are plotted as blue circle pins (`google.maps.Marker` with `SymbolPath.CIRCLE`). Hovering a pin enlarges it and darkens the color. Clicking a pin opens a Google Maps `InfoWindow` overlay with property image, title, beds, city, and a "View listing" link. **Pending:** Migrate to custom house-icon pins (see F-05.3a below).
 
-- **F-05.4 — Map + list sync:** Hovering a card in the list highlights the corresponding map pin (and vice versa). Both use a shared `hoveredPropertyId` reactive state.
+- **F-05.3a — Custom map pins (NEW):** Replace the current blue circle marker with a custom house-icon SVG pin. Design requirements:
+  - Default state: white or light-blue teardrop/pin shape with a small house icon inside. Matches brand colors.
+  - Hovered/active: pin grows slightly, adds shadow, changes to brand blue fill with white icon.
+  - Implementation: custom SVG passed as `icon` on `google.maps.Marker`, or migrate to `google.maps.marker.AdvancedMarkerElement` with custom HTML content (requires a Google Maps Map ID configured in Cloud Console).
+  - Keep InfoWindow click behavior (image, title, beds, city, "View listing" link).
 
-- **F-05.5 — /homes/[lake] map:** The same two-column layout and map behavior applies to all lake-specific pages (`/homes/seneca-lake`, etc.). The map is pre-centered on the selected lake's approximate coordinates.
+- **F-05.4 — Map + list sync:** **Done Apr 24, 2026.** Hovering a card in the list highlights the corresponding map pin (and vice versa) via shared `hoveredId` ref. `VacaRentSumCard` applies `ring-blue-400 shadow-md` when hovered.
+
+- **F-05.5 — /homes/[lake] map:** **Done Apr 24, 2026.** Lake-specific pages pre-center the map using a `LAKE_CENTERS` lookup for all 11 Finger Lakes. `centerLake` prop passed to `HomesMap`.
 
 ---
 
@@ -790,15 +786,15 @@ Implement in this sequence. Each step builds on or enables the next.
 
 | ID | Description | Status | Feature |
 |---|---|---|---|
-| BUG-01 | Property amenities display raw MongoDB ObjectIds on all property profile pages | **Open** | F-01, F-03 |
-| BUG-02 | Admin users receive "You don't have permission" error when attempting to edit any property | **Open** | F-01 |
-| BUG-03 | Admin users receive "Not authorized, user not found" when uploading images to a property | **Open** | F-01 |
-| BUG-04 | Dev mode: intermittent `Failed to fetch` on initial page load for `/api/properties` and `/api/properties/[slug]` — resolves on refresh | **Open** | F-01 |
-| BUG-05 | Guest review section displays `0.0` scores instead of a no-reviews message | **Open** | F-01 |
+| BUG-01 | Property amenities display raw MongoDB ObjectIds on all property profile pages | **Fixed Apr 24, 2026** | F-01, F-03 |
+| BUG-02 | Admin users receive "You don't have permission" error when attempting to edit any property | **Fixed (pre-existing)** | F-01 |
+| BUG-03 | Admin users receive "Not authorized, user not found" when uploading images to a property | **Fixed (pre-existing)** | F-01 |
+| BUG-04 | Dev mode: intermittent `Failed to fetch` on initial page load for `/api/properties` and `/api/properties/[slug]` — resolves on refresh | **Fixed Apr 24, 2026** — `onMounted` client-side retry added to `/homes`, `/homes/[slug]`, and `/properties/[id]` pages | F-01 |
+| BUG-05 | Guest review section displays `0.0` scores instead of a no-reviews message | **Fixed Apr 24, 2026** | F-01 |
 | BUG-06 | Pricing page advertises Free tier features that belong to Boost | **Fixed Apr 23, 2026** | F-02 |
 | BUG-07 | Footer links for "Host resources", "Community forum", "Help center", "Contact us", "Privacy policy" all route to `#` | **Fixed Apr 23, 2026** | F-01 |
-| BUG-08 | Footer only links to 4 of 11 Finger Lakes | **Open** | F-01, F-10 |
-| BUG-09 | Google Map missing on `/homes` and `/homes/[lake]` pages | **Open** | F-05 |
+| BUG-08 | Footer only links to 4 of 11 Finger Lakes | **By design** — footer permanently links to the top 4 lakes (Seneca, Cayuga, Keuka, Canandaigua) by listing volume; remaining 7 lakes accessible via /homes lake selector | F-01, F-10 |
+| BUG-09 | Google Map missing on `/homes` and `/homes/[lake]` pages | **Fixed Apr 25, 2026** — API key set in PM2 env; hover sync, InfoWindow, and lake centering implemented; blank grey map caused by zero-height CSS circular dependency (`lg:h-full` with `self-start` parent) fixed with `lg:h-[520px]` | F-05 |
 
 ---
 
@@ -846,3 +842,6 @@ STRIPE_PRICE_PRO_LIFETIME_LAUNCH=price_xxxx
 | Feb 12, 2026 | 0.1 | Jason | Initial scaffolding |
 | Apr 22, 2026 | 0.2 | Jason | Full rewrite: added F-01 through F-10, Stripe billing, OwnerRez, Experiences, SEO, host dashboard, search bar component, Google Maps, amenity grouped component. Separated backend/frontend tasks throughout. |
 | Apr 23, 2026 | 0.3 | Jason | Marked F-02 fixed. Marked F-01.3 (footer links) fixed: "Community forum" removed, "Help center" replaced with "Documentation", Contact and Privacy pages created. BUG-06 and BUG-07 closed. |
+| Apr 24, 2026 | 0.4 | Jason | F-01.1 fixed (amenity display with grouping). F-01.2 fixed (reviews zero state). B-01.1–B-01.3 confirmed pre-existing fixes. F-03 frontend complete: AmenitiesGroupList component built, wired to create/edit forms and profile page. F-05 Google Maps implemented: API key configured, hover sync, InfoWindow click overlays, lake pre-centering. GA4 (G-WXSET9QNSD) added via nuxt.config.ts head scripts. BUG-01, BUG-02, BUG-03, BUG-05, BUG-09 closed. BUG-08 deferred. |
+| Apr 25, 2026 | 0.5 | Jason | F-05 map fully working in production: root cause of blank grey map (zero-height `mapEl` due to `lg:h-full` CSS circular dependency with `self-start` flex parent) identified and fixed. API key moved to `ecosystem.config.cjs` PM2 env block. F-05.3a custom map pins added as next pending task. BUG-09 updated with full fix details. |
+| Apr 24, 2026 | 0.6 | Jason | B-01.4 fixed: `onMounted` client-side retry added to `/homes`, `/homes/[slug]`, and `/properties/[id]` pages to recover from dev-mode SSR fetch failures. BUG-04 closed. F-01.4 updated to document the deliberate decision to link only the top 4 lakes in the footer. BUG-08 closed as by design. All F-01 items are now resolved. |

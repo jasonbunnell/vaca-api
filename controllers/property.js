@@ -34,7 +34,7 @@ function parseCommaList(val) {
 // @access  Public
 exports.getProperties = async (req, res) => {
   try {
-    const { lake, amenityMatch } = req.query;
+    const { lake, amenityMatch, where, guests } = req.query;
     const hasPagination = req.query.page != null || req.query.limit != null;
     const page = Math.max(parseInt(String(req.query.page), 10) || 1, 1);
     const limitRaw = parseInt(String(req.query.limit), 10);
@@ -43,6 +43,18 @@ exports.getProperties = async (req, res) => {
     const q = {};
     if (lake) {
       q.lake = lake;
+    }
+
+    if (where) {
+      const re = new RegExp(String(where).trim(), 'i');
+      q.$or = [{ lake: re }, { 'location.city': re }];
+    }
+
+    if (guests) {
+      const g = parseInt(String(guests), 10);
+      if (!Number.isNaN(g) && g > 0) {
+        q.guests = { $gte: g };
+      }
     }
 
     const amenityTokens = parseCommaList(req.query.amenities);
