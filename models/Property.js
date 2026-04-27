@@ -12,6 +12,25 @@ function slugifyTitle(title) {
     .replace(/-+/g, '-');
 }
 
+/**
+ * Find a unique slug for `title`, ignoring the document at `excludeId` (used
+ * during updates so a property doesn't collide with itself).
+ */
+async function uniqueSlug(title, excludeId) {
+  const base = slugifyTitle(title);
+  let slug = base;
+  let counter = 1;
+  while (
+    await mongoose.models.Property.exists({
+      slug,
+      ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+    })
+  ) {
+    slug = `${base}-${counter++}`;
+  }
+  return slug;
+}
+
 /** Aligned with docs/finger-lake.md display names + Other */
 const FINGER_LAKES = [
   'Conesus Lake',
@@ -150,83 +169,54 @@ propertySchema.pre('save', async function (next) {
 });
 
 propertySchema.pre('save', async function (next) {
-  if (!this.isModified('title') && this.slug) return next();
-  if (!this.title) return next();
-
-  const base = slugifyTitle(this.title);
-  let slug = base;
-  let counter = 1;
-
-  while (
-    await mongoose.models.Property.exists({
-      slug,
-      _id: { $ne: this._id },
-    })
-  ) {
-    slug = `${base}-${counter++}`;
-  }
-
-  this.slug = slug;
-  next();
-});
-
-propertySchema.pre('findOneAndUpdate', async function (next) {
   try {
-    const update = this.getUpdate() || {};
-    const $set = { ...(update.$set || {}) };
-    for (const key of Object.keys(update)) {
-      if (!key.startsWith('$')) {
-        $set[key] = update[key];
-      }
-    }
-    const address = $set.address;
-    if (!address || typeof address !== 'string' || !address.trim()) {
-      return next();
-    }
-    const location = await geocodeAddress(address.trim());
-    delete $set.address;
-    $set.location = location;
-    const rest = { ...update, $set };
-    for (const key of Object.keys(update)) {
-      if (!key.startsWith('$')) {
-        delete rest[key];
-      }
-    }
-    this.setUpdate(rest);
+    if (!this.isModified('title') && this.slug) return next();
+    if (!this.title) return next();
+    this.slug = await uniqueSlug(this.title, this._id);
     next();
   } catch (err) {
     next(err);
   }
 });
 
+/**
+ * Apply geocode + slug regen to findOneAndUpdate operations. Both reads from
+ * `update.$set` and root-level fields, then writes back via `setUpdate`.
+ */
 propertySchema.pre('findOneAndUpdate', async function (next) {
-  const update = this.getUpdate() || {};
-  const title =
-    (update.$set && update.$set.title) ||
-    update.title;
+  try {
+    const update = this.getUpdate() || {};
+    const $set = { ...(update.$set || {}) };
+    for (const key of Object.keys(update)) {
+      if (!key.startsWith('$')) $set[key] = update[key];
+    }
 
-  if (!title) return next();
+    let changed = false;
 
-  const base = slugifyTitle(title);
-  let slug = base;
-  let counter = 1;
-  const query = this.getQuery() || {};
-  const currentId = query._id;
+    const address = $set.address;
+    if (address && typeof address === 'string' && address.trim()) {
+      $set.location = await geocodeAddress(address.trim());
+      delete $set.address;
+      changed = true;
+    }
 
-  while (
-    await mongoose.models.Property.exists({
-      slug,
-      ...(currentId ? { _id: { $ne: currentId } } : {}),
-    })
-  ) {
-    slug = `${base}-${counter++}`;
+    if ($set.title) {
+      const currentId = (this.getQuery() || {})._id;
+      $set.slug = await uniqueSlug($set.title, currentId);
+      changed = true;
+    }
+
+    if (!changed) return next();
+
+    const rest = { ...update, $set };
+    for (const key of Object.keys(update)) {
+      if (!key.startsWith('$')) delete rest[key];
+    }
+    this.setUpdate(rest);
+    next();
+  } catch (err) {
+    next(err);
   }
-
-  const newUpdate = { ...update };
-  if (!newUpdate.$set) newUpdate.$set = {};
-  newUpdate.$set.slug = slug;
-  this.setUpdate(newUpdate);
-  next();
 });
 
 const Property = mongoose.model('Property', propertySchema);

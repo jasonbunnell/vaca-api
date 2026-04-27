@@ -2,6 +2,9 @@ const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/cl
 const mongoose = require('mongoose');
 const Property = require('../models/Property');
 const { logAction } = require('../utils/securityLogger');
+const { assertPropertyAccess } = require('../utils/propertyAccess');
+const asyncHandler = require('../utils/asyncHandler');
+const { httpError } = require('../middleware/errorHandler');
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const BUCKET = process.env.SPACES_BUCKET_NAME || process.env.SPACE_BUCKET_NAME || 'flxvaca';
@@ -64,91 +67,82 @@ async function deleteFromSpaces(key) {
  * Uploads to DO Spaces: properties/photo_{propertyId}_{01..50}.{ext}, appends to property.images.
  * Caller must be host or admin of the property.
  */
-exports.uploadImage = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
-    if (req.file.size > MAX_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image must be 2MB or smaller' });
-    }
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Invalid image type. Use JPG, JPEG, PNG, GIF, or WEBP.' });
-    }
-
-    const propertyId = req.body && req.body.propertyId;
-    if (!propertyId || !mongoose.Types.ObjectId.isValid(propertyId)) {
-      return res.status(400).json({ error: 'Valid propertyId is required' });
-    }
-
-    const property = await Property.findById(propertyId);
-    if (!property) {
-      return res.status(404).json({ error: 'Property not found' });
-    }
-
-    const isAdmin = req.user?.role === 'admin';
-    let hostIds = property.host || [];
-    if (!hostIds.length) {
-      // Older properties may have been created before host was enforced. Only an admin can repair this.
-      if (!isAdmin) {
-        return res.status(400).json({ error: 'Property has no hosts configured. Contact an admin to fix this property before uploading images.' });
-      }
-      property.host = [req.user._id];
-      hostIds = property.host;
-    }
-    const isHost = hostIds.some((h) => h && h.toString() === req.user?._id?.toString());
-    if (!isAdmin && !isHost) {
-      return res.status(403).json({ error: 'Forbidden: you are not a host of this property.' });
-    }
-
-    if (property.images.length >= 50) {
-      return res.status(400).json({ error: 'Property already has 50 images. Remove another to add one.' });
-    }
-
-    const client = getS3Client();
-    if (!client) {
-      return res.status(503).json({ error: 'Image storage not configured' });
-    }
-
-    const extMap = { 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
-    const ext = extMap[req.file.mimetype] || 'jpg';
-    const seq = String(property.images.length + 1).padStart(2, '0');
-    const key = `properties/photo_${propertyId}_${seq}.${ext}`;
-
-    await client.send(
-      new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: key,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-        ACL: 'public-read',
-      })
-    );
-
-    const url = `${SPACES_CDN}/${key}`;
-    const isMain = property.images.length === 0;
-    property.images.push({
-      url,
-      room: 'Additional Photos',
-      caption: '',
-      isMain,
-    });
-    await property.save();
-
-    logAction('image-upload', {
-      userId: req.user._id,
-      success: true,
-      detail: { propertyId: property._id, imageUrl: url },
-    });
-
-    const added = property.images[property.images.length - 1];
-    return res.status(200).json({ url, image: added, propertyId: property._id });
-  } catch (err) {
-    console.error('Upload error:', err);
-    return res.status(500).json({ error: 'Failed to upload image' });
+exports.uploadImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw httpError(400, 'No image file provided');
   }
-};
+  if (req.file.size > MAX_SIZE_BYTES) {
+    throw httpError(400, 'Image must be 2MB or smaller');
+  }
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    throw httpError(400, 'Invalid image type. Use JPG, JPEG, PNG, GIF, or WEBP.');
+  }
+
+  const propertyId = req.body && req.body.propertyId;
+  if (!propertyId || !mongoose.Types.ObjectId.isValid(propertyId)) {
+    throw httpError(400, 'Valid propertyId is required');
+  }
+
+  const property = await Property.findById(propertyId);
+  if (!property) {
+    throw httpError(404, 'Property not found');
+  }
+
+  const isAdmin = req.user?.role === 'admin';
+  // Older properties may have been created before host was enforced. Only an admin can repair this.
+  if (!(property.host || []).length) {
+    if (!isAdmin) {
+      throw httpError(400, 'Property has no hosts configured. Contact an admin to fix this property before uploading images.');
+    }
+    property.host = [req.user._id];
+  } else {
+    assertPropertyAccess(property, req.user);
+  }
+
+  if (property.images.length >= 50) {
+    throw httpError(400, 'Property already has 50 images. Remove another to add one.');
+  }
+
+  const client = getS3Client();
+  if (!client) {
+    throw httpError(503, 'Image storage not configured');
+  }
+
+  const extMap = { 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+  const ext = extMap[req.file.mimetype] || 'jpg';
+  const seq = String(property.images.length + 1).padStart(2, '0');
+  const key = `properties/photo_${propertyId}_${seq}.${ext}`;
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read',
+    })
+  );
+
+  const url = `${SPACES_CDN}/${key}`;
+  const isMain = property.images.length === 0;
+  property.images.push({
+    url,
+    room: 'Additional Photos',
+    caption: '',
+    isMain,
+  });
+  await property.save();
+
+  logAction('image-upload', {
+    userId: req.user._id,
+    success: true,
+    detail: { propertyId: property._id, imageUrl: url },
+  });
+
+  const added = property.images[property.images.length - 1];
+  res.status(200).json({ url, image: added, propertyId: property._id });
+});
 
 /**
  * Delete an image from Spaces by URL. Used by property controller when removing an image.

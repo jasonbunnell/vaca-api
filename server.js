@@ -14,6 +14,8 @@ const amenityRoutes = require('./routes/amenity');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
+const { getSitemap, getRobotsTxt } = require('./controllers/sitemap');
+const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,6 +56,13 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'FLX Vacations API' });
 });
+
+// SEO (F-10.1, F-10.2)
+app.get('/sitemap.xml', getSitemap);
+app.get('/robots.txt', getRobotsTxt);
+
+// Error handler — must be last
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

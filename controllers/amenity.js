@@ -1,5 +1,7 @@
 const Amenity = require('../models/Amenity');
 const { logAction } = require('../utils/securityLogger');
+const asyncHandler = require('../utils/asyncHandler');
+const { httpError } = require('../middleware/errorHandler');
 
 const GROUP_ORDER = [
   'essentials',
@@ -36,78 +38,62 @@ function groupAmenities(docs) {
 
 // @route   GET /api/amenities
 // @access  Public (includeInactive requires admin JWT)
-exports.getAmenities = async (req, res) => {
-  try {
-    const grouped = req.query.grouped === 'true';
-    const includeInactive = req.query.includeInactive === 'true';
+exports.getAmenities = asyncHandler(async (req, res) => {
+  const grouped = req.query.grouped === 'true';
+  const includeInactive = req.query.includeInactive === 'true';
 
-    if (includeInactive) {
-      if (!req.user) {
-        return res.status(401).json({ error: 'Authentication required for includeInactive' });
-      }
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden: admin only' });
-      }
+  if (includeInactive) {
+    if (!req.user) {
+      throw httpError(401, 'Authentication required for includeInactive');
     }
-
-    const filter = includeInactive ? {} : { isActive: true };
-    const list = await Amenity.find(filter).sort({ category: 1, displayName: 1 }).exec();
-
-    if (grouped) {
-      return res.json(groupAmenities(list));
+    if (req.user.role !== 'admin') {
+      throw httpError(403, 'Forbidden: admin only');
     }
-    res.json(list);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-};
+
+  const filter = includeInactive ? {} : { isActive: true };
+  const list = await Amenity.find(filter).sort({ category: 1, displayName: 1 }).exec();
+
+  if (grouped) {
+    return res.json(groupAmenities(list));
+  }
+  res.json(list);
+});
 
 // @route   POST /api/amenities
 // @access  Admin
-exports.createAmenity = async (req, res) => {
-  try {
-    const { name: _ignoredName, ...payload } = req.body;
-    const doc = await Amenity.create(payload);
-    logAction('amenity-create', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
-    res.status(201).json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
+exports.createAmenity = asyncHandler(async (req, res) => {
+  const { name: _ignoredName, ...payload } = req.body;
+  const doc = await Amenity.create(payload);
+  logAction('amenity-create', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
+  res.status(201).json(doc);
+});
 
 // @route   PUT /api/amenities/:id
 // @access  Admin
-exports.updateAmenity = async (req, res) => {
-  try {
-    const doc = await Amenity.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!doc) {
-      return res.status(404).json({ error: 'Amenity not found' });
-    }
-    logAction('amenity-update', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
-    res.json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+exports.updateAmenity = asyncHandler(async (req, res) => {
+  const doc = await Amenity.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
+  if (!doc) {
+    throw httpError(404, 'Amenity not found');
   }
-};
+  logAction('amenity-update', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
+  res.json(doc);
+});
 
 // @route   DELETE /api/amenities/:id
 // @access  Admin (soft delete)
-exports.deleteAmenity = async (req, res) => {
-  try {
-    const doc = await Amenity.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true, runValidators: true }
-    );
-    if (!doc) {
-      return res.status(404).json({ error: 'Amenity not found' });
-    }
-    logAction('amenity-deactivate', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
-    res.json({ message: 'Amenity deactivated', amenity: doc });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+exports.deleteAmenity = asyncHandler(async (req, res) => {
+  const doc = await Amenity.findByIdAndUpdate(
+    req.params.id,
+    { isActive: false },
+    { new: true, runValidators: true }
+  );
+  if (!doc) {
+    throw httpError(404, 'Amenity not found');
   }
-};
+  logAction('amenity-deactivate', { userId: req.user._id, success: true, detail: { amenityId: doc._id } });
+  res.json({ message: 'Amenity deactivated', amenity: doc });
+});
