@@ -1,28 +1,34 @@
 /**
- * Standard `.populate()` arguments for Property reads. Apply both to every
- * property read so the API response shape stays consistent.
- *
- * Usage:
- *   Property.find(q).populate(...PROPERTY_POPULATE)
- *   Property.findById(id).populate(...PROPERTY_POPULATE)
- *
- * Each entry is `[path, fields]`; spread the whole array into a chained
- * `.populate(POPULATE_HOST).populate(POPULATE_AMENITIES)` is also fine.
+ * Standard `.populate()` arguments for Property reads. Apply to every property
+ * read so the API response shape stays consistent and the plan-gating
+ * serializer in `utils/propertySerializer.js` has the data it needs.
  */
-const POPULATE_HOST = ['host', 'name email role'];
+const POPULATE_HOST = ['host', 'name email phone role'];
 const POPULATE_AMENITIES = [
   'amenities',
   'name displayName category color icon description isActive',
 ];
+const POPULATE_SUBSCRIPTION = [
+  'subscription',
+  'plan billingType isLifetime status currentPeriodStart currentPeriodEnd cancelAtPeriodEnd',
+];
 
 /**
- * Apply both populates to a Mongoose query in one call.
+ * Apply all standard populates to a Mongoose query in one call.
  * @template T
  * @param {import('mongoose').Query<T, any>} query
  * @returns {import('mongoose').Query<T, any>}
  */
 function populateProperty(query) {
-  return query.populate(...POPULATE_HOST).populate(...POPULATE_AMENITIES);
+  return query
+    .populate(...POPULATE_HOST)
+    .populate(...POPULATE_AMENITIES)
+    .populate(...POPULATE_SUBSCRIPTION);
 }
 
-module.exports = { POPULATE_HOST, POPULATE_AMENITIES, populateProperty };
+module.exports = {
+  POPULATE_HOST,
+  POPULATE_AMENITIES,
+  POPULATE_SUBSCRIPTION,
+  populateProperty,
+};

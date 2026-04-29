@@ -1,8 +1,8 @@
 # Product Requirements Document — FLX Vacations
 
-**Version:** 0.7 (Draft)
+**Version:** 0.8 (Draft)
 **First draft:** Feb 12, 2026
-**This revision:** Apr 24, 2026
+**This revision:** Apr 28, 2026
 **Owner:** Jason
 
 ---
@@ -722,69 +722,25 @@ The host dashboard is the authenticated area where a host manages all their prop
 
 #### Backend
 
-- **B-10.1 — Sitemap endpoint `GET /sitemap.xml`:**
-  - Dynamically generates an XML sitemap.
-  - Includes: all public pages (`/`, `/homes`, `/pricing`, `/experiences`, `/homes/[lake-slug]` for all 11 lakes), all active property profile pages (`/properties/[slug]`), all active experience pages (`/experiences/[slug]`).
-  - Sets `<lastmod>` to `property.updatedAt` / `experience.updatedAt` for dynamic pages.
-  - Sets `<changefreq>` appropriately: `weekly` for property pages, `monthly` for static pages.
-  - Submit the sitemap URL to Google Search Console after deployment.
+- **B-10.1 — Sitemap endpoint `GET /sitemap.xml`:** **Done Apr 27, 2026.** Implemented in `vaca-api/controllers/sitemap.js`. Generated XML lists 7 static pages (`/`, `/homes`, `/pricing`, `/experiences`, `/contact`, `/privacy`, `/documentation`), all 11 lake landing pages (`/homes/[slug]`), and every property by slug with `lastmod` from `property.updatedAt`. `PUBLIC_SITE_URL` env var (defaults to `https://flxvacations.com`) controls the URL base. Frontend exposes it at `flxvacations.com/sitemap.xml` via a Nuxt server proxy at `server/routes/sitemap.xml.get.ts`. Experience URLs will be added when F-09 ships. **TODO:** Submit `https://flxvacations.com/sitemap.xml` to Google Search Console.
 
-- **B-10.2 — Robots.txt:** Serve a `robots.txt` at the root that allows all crawlers and references the sitemap URL.
+- **B-10.2 — Robots.txt:** **Done Apr 27, 2026.** vaca-api serves a robots.txt at `/robots.txt` for parity. The public site is served from `flxvacations.com/public/robots.txt`, which now allows all crawlers, disallows `/api/`, `/_proxy/`, and authenticated routes (`/account`, `/dashboard`, `/login`, `/signup`, `/forgot-password`, `/reset-password`), and references the sitemap URL.
 
 #### Frontend
 
-- **F-10.1 — Page-level meta tags:** Use Nuxt's `useHead` or `useSeoMeta` composable to set `<title>` and `<meta name="description">` on every page:
-  - Homepage: title "Finger Lakes Vacation Rentals — FLX Vacations", description "Browse lakefront cottages, vineyard retreats, and cabin rentals in the Finger Lakes region of New York. No commission booking."
-  - `/homes`: title "Finger Lakes Vacation Homes | FLX Vacations", description "Search all vacation rentals across the Finger Lakes — Seneca, Cayuga, Keuka, Canandaigua, and more."
-  - `/homes/[lake]`: title "[Lake Name] Vacation Rentals | FLX Vacations", description "Find vacation rentals on [Lake Name] in the Finger Lakes, NY."
-  - Property profile: title "[Property Title] — [City], NY | FLX Vacations", description First 155 characters of `property.description`.
-  - `/experiences`: title "Finger Lakes Experiences — Wine Tours, Boat Cruises & More | FLX Vacations"
-  - `/pricing`: title "Host Pricing — List Your Finger Lakes Property | FLX Vacations"
+- **F-10.1 — Page-level meta tags:** **Done Apr 27, 2026.** Built a `useSeo({ title, description, path, image, ogType, noindex })` composable in `composables/useSeo.ts` that wraps `useSeoMeta` + `useHead` so every page is one call. Applied to `/`, `/homes`, `/homes/[lake]`, `/properties/[id]`, `/pricing`, `/events`, `/experiences`, `/contact`, `/privacy`, `/documentation`. Property profile uses reactive computed values to populate after the property fetch resolves. Default fallback title/description added in `nuxt.config.ts` `app.head` so any future page without `useSeo()` still has sane defaults.
 
-- **F-10.2 — Open Graph and Twitter Card tags:** On all pages, add:
-  - `og:title`, `og:description`, `og:url`, `og:image` (property main image for property pages; site hero image for static pages), `og:type` (`website` for static, `article` for listing pages).
-  - `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`.
-  - These enable rich previews when links are shared on social media.
+- **F-10.2 — Open Graph and Twitter Card tags:** **Done Apr 27, 2026.** All OG (`og:title`, `og:description`, `og:url`, `og:image`, `og:type`, `og:site_name`) and Twitter Card tags (`twitter:card=summary_large_image`, `twitter:title`, `twitter:description`, `twitter:image`) are emitted by the `useSeo` composable on every page. Property pages use the main property image; static pages fall back to the site hero image (`/img/FingerLakes_Keuka-Lake-full.webp`).
 
-- **F-10.3 — JSON-LD structured data on property profile pages:** Inject a `<script type="application/ld+json">` block on every property page using the `LodgingBusiness` schema type:
-  ```json
-  {
-    "@context": "https://schema.org",
-    "@type": "LodgingBusiness",
-    "name": "[property.title]",
-    "description": "[property.description]",
-    "image": ["[main image URL]"],
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": "[location.street]",
-      "addressLocality": "[location.city]",
-      "addressRegion": "NY",
-      "postalCode": "[location.zipcode]",
-      "addressCountry": "US"
-    },
-    "numberOfRooms": "[property.bedrooms]",
-    "url": "https://flxvacations.com/properties/[slug]"
-  }
-  ```
-  Add `"aggregateRating"` only when review data is available (F-08.7).
+- **F-10.3 — JSON-LD structured data on property profile pages:** **Done Apr 27, 2026.** `app/pages/properties/[id]/index.vue` injects a `<script type="application/ld+json">` block with reactive `LodgingBusiness` schema: `name`, `description`, `image`, `numberOfRooms` (from `bedrooms`), and a `PostalAddress` built from `location.streetNumber`/`streetName`/`city`/`zipcode` with `addressRegion: 'NY'` and `addressCountry: 'US'`. `aggregateRating` deferred to F-08.7 when review data is available.
 
-- **F-10.4 — JSON-LD on homepage:** Add `Organization` schema:
-  ```json
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "name": "FLX Vacations",
-    "url": "https://flxvacations.com",
-    "description": "Finger Lakes vacation rental directory — short-term rentals with no commission.",
-    "areaServed": "Finger Lakes, New York"
-  }
-  ```
+- **F-10.4 — JSON-LD on homepage:** **Done Apr 27, 2026.** `app/pages/index.vue` calls `useJsonLd()` with the `Organization` schema (name, url, description, areaServed).
 
-- **F-10.5 — Canonical tags:** Add `<link rel="canonical" href="[page URL]">` on all pages to prevent duplicate content issues (important for `/homes?where=...` URL variants).
+- **F-10.5 — Canonical tags:** **Done Apr 27, 2026.** `useSeo` emits `<link rel="canonical">` with the absolute URL built against `runtimeConfig.public.siteUrl`.
 
-- **F-10.6 — Image alt text audit:** Audit all `<img>` tags site-wide. Every image must have a descriptive `alt` attribute. For property images: use `image.description` if set, otherwise fall back to `"[property.title] — [roomType]"`. For experience images: use `"[experience.title] experience in the Finger Lakes"`.
+- **F-10.6 — Image alt text audit:** **Done Apr 27, 2026.** Audited every `<img>` in `app/`. All Vue templates already had descriptive `:alt` bindings (property title / image caption fallback). The only finding was the InfoWindow popup in `HomesMap.vue` that emitted `alt=""`; fixed to use the property title and added HTML escaping to title/sub/href since they're injected as raw HTML in the InfoWindow markup (small XSS hardening alongside the alt fix).
 
-- **F-10.7 — Internal linking — lake pages in footer:** All 11 lake pages must be linked in the footer under "The Finger Lakes" (this also satisfies F-01.4). This is important for Google to discover and index all lake-specific landing pages.
+- **F-10.7 — Internal linking — lake pages in footer:** **By design — closed.** Per the F-01.4 / BUG-08 decision, the footer permanently links to the top 4 lakes (Seneca, Cayuga, Keuka, Canandaigua) by listing volume. Google can still discover all 11 lake landing pages via the sitemap (B-10.1), so footer links to the remaining 7 are not required for indexability.
 
 ---
 
@@ -820,6 +776,7 @@ Implement in this sequence. Each step builds on or enables the next.
 | BUG-07 | Footer links for "Host resources", "Community forum", "Help center", "Contact us", "Privacy policy" all route to `#` | **Fixed Apr 23, 2026** | F-01 |
 | BUG-08 | Footer only links to 4 of 11 Finger Lakes | **By design** — footer permanently links to the top 4 lakes (Seneca, Cayuga, Keuka, Canandaigua) by listing volume; remaining 7 lakes accessible via /homes lake selector | F-01, F-10 |
 | BUG-09 | Google Map missing on `/homes` and `/homes/[lake]` pages | **Fixed Apr 25, 2026** — API key set in PM2 env; hover sync, InfoWindow, and lake centering implemented; blank grey map caused by zero-height CSS circular dependency (`lg:h-full` with `self-start` parent) fixed with `lg:h-[520px]` | F-05 |
+| BUG-10 | `/events` page returned 404 on initial client-side navigation, but worked on full-page refresh. Hero images on `/` had the same latent issue | **Fixed Apr 27, 2026** — Root cause: production Nginx forwards `/api/**` to vaca-api on `:7000`, swallowing the Nuxt server proxy at `/api/events` before it could reach Nuxt on `:2000`. SSR worked because Nuxt's in-memory `$fetch` bypassed Nginx; client-side navigation hit the public URL and 404'd. Fix: moved Nuxt server proxies out of `/api/` namespace into `/_proxy/` so they fall through to Nuxt without an Nginx exception. `server/api/events.get.ts` → `server/routes/_proxy/events.get.ts`; `server/api/hero-images.get.ts` → `server/routes/_proxy/hero-images.get.ts`; deleted unused `server/api/events-image.get.ts`. Page consumers updated. `routeRules` in `nuxt.config.ts` re-narrowed to per-prefix vaca-api routes only. `docs/nginx-api-proxy.conf` updated with the new convention. | — |
 
 ---
 
@@ -871,3 +828,6 @@ STRIPE_PRICE_PRO_LIFETIME_LAUNCH=price_xxxx
 | Apr 25, 2026 | 0.5 | Jason | F-05 map fully working in production: root cause of blank grey map (zero-height `mapEl` due to `lg:h-full` CSS circular dependency with `self-start` flex parent) identified and fixed. API key moved to `ecosystem.config.cjs` PM2 env block. F-05.3a custom map pins added as next pending task. BUG-09 updated with full fix details. |
 | Apr 24, 2026 | 0.6 | Jason | B-01.4 fixed: `onMounted` client-side retry added to `/homes`, `/homes/[slug]`, and `/properties/[id]` pages to recover from dev-mode SSR fetch failures. BUG-04 closed. F-01.4 updated to document the deliberate decision to link only the top 4 lakes in the footer. BUG-08 closed as by design. All F-01 items are now resolved. |
 | Apr 24, 2026 | 0.7 | Jason | F-04 Filter Panel complete: `FilterPanel.vue` built and wired into `/homes` and `/homes/[slug]`. Applied filter chips, top amenity quick-selects (pets, parking, check-in, wifi), room/bed steppers (max 8), grouped amenities (slug-keyed), URL-persisted filter state, filter count badge, clear all. B-04.1 extended: `minBedrooms`, `minBeds`, `minBathrooms` added to `GET /api/properties`. `pets-allowed` and `free-parking` amenities seeded to production DB. F-04.5 and F-04.6 added to PRD. Google Maps Map ID created and documented. `SearchBar.vue` filter button infrastructure added. Unused lake dropdown state removed from `/homes`. |
+| Apr 27, 2026 | 0.8a | Jason | **vaca-api refactors landed (commit `9fb767a`):** added `asyncHandler` wrapper + central `errorHandler` middleware (replaces ~25 try/catch blocks); extracted `assertPropertyAccess` helper (replaces 4 duplicated isAdmin/isHost blocks); extracted `populateProperty` helper (consolidates 6+ populate chains); split `extractToken`/`verifyAndLoadUser` shared between `protect` and `optionalProtect`; deduped slug + geocode `pre('findOneAndUpdate')` hooks in Property model; cleaned up `createUser` validator dup-checks and forced `role: 'user'` to close a privilege escalation hole. **B-10.1, B-10.2 done:** `/sitemap.xml` and `/robots.txt` endpoints added in vaca-api with `PUBLIC_SITE_URL` env var; mounted at root in `server.js`. Net –115 LOC across touched files. |
+| Apr 27, 2026 | 0.8b | Jason | **BUG-10 fixed:** `/events` 404 on initial client navigation. Moved Nuxt server proxies out of the `/api/**` Nginx-claimed namespace into `/_proxy/**` (events, hero-images). Deleted unused events-image proxy. `routeRules` re-narrowed to per-prefix vaca-api routes. `docs/nginx-api-proxy.conf` updated with the new convention header. **F-10 frontend complete:** `useSeo` + `useJsonLd` composables created in `composables/useSeo.ts`; applied to all 10 public pages. Property profile uses reactive computed values + `LodgingBusiness` JSON-LD; homepage gets `Organization` JSON-LD. Default head fallback added in `nuxt.config.ts`. `runtimeConfig.public.siteUrl` added (override via `NUXT_PUBLIC_SITE_URL`). `public/robots.txt` rewritten to disallow auth pages, /api/, /_proxy/, and reference the sitemap. Nuxt server route at `server/routes/sitemap.xml.get.ts` proxies `flxvacations.com/sitemap.xml` to vaca-api. F-10.1–F-10.6 closed. F-10.7 closed by design. |
+| Apr 28, 2026 | 0.8 | Jason | Removed Services from PRD, main menu, and footer — focusing on Experiences for now. Deleted `app/pages/services/index.vue`. PRD F-10 sections updated to reflect completion across this revision. |

@@ -5,6 +5,7 @@ const { deleteFromSpacesByUrl } = require('./upload');
 const { resolveAmenityFilterTokens } = require('../utils/amenityHelpers');
 const { populateProperty } = require('../utils/propertyPopulate');
 const { assertPropertyAccess } = require('../utils/propertyAccess');
+const { toPublicProperty, toPublicPropertyList } = require('../utils/propertySerializer');
 const asyncHandler = require('../utils/asyncHandler');
 const { httpError } = require('../middleware/errorHandler');
 
@@ -102,11 +103,11 @@ exports.getProperties = asyncHandler(async (req, res) => {
         .exec(),
       Property.countDocuments(q),
     ]);
-    return res.json({ items, total, page, limit });
+    return res.json({ items: toPublicPropertyList(items, { user: req.user }), total, page, limit });
   }
 
   const properties = await base.exec();
-  res.json(properties);
+  res.json(toPublicPropertyList(properties, { user: req.user }));
 });
 
 // @desc    Get single property (by slug or id)
@@ -123,13 +124,14 @@ exports.getProperty = asyncHandler(async (req, res) => {
   if (!property) {
     throw httpError(404, 'Property not found');
   }
-  res.json(property);
+  res.json(toPublicProperty(property, { user: req.user }));
 });
 
 // @desc    Get properties for current user
 // @route   GET /api/properties/my
 // @access  Private
 exports.getMyProperties = asyncHandler(async (req, res) => {
+  // Hosts always see the full doc for their own properties — no gating.
   const properties = await populateProperty(Property.find({ host: req.user._id }));
   res.json(properties);
 });

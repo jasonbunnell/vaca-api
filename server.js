@@ -14,6 +14,8 @@ const amenityRoutes = require('./routes/amenity');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
+const subscriptionRoutes = require('./routes/subscription');
+const { handleWebhook } = require('./controllers/subscription');
 const { getSitemap, getRobotsTxt } = require('./controllers/sitemap');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -38,6 +40,15 @@ app.use(
     credentials: true,
   })
 );
+// Stripe webhook needs the RAW body for signature verification, so it MUST be
+// mounted before express.json(). express.json() parses the body and discards
+// the raw bytes, which would break stripe.webhooks.constructEvent.
+app.post(
+  '/api/subscriptions/webhook',
+  express.raw({ type: 'application/json' }),
+  handleWebhook
+);
+
 app.use(express.json());
 
 // Routes
@@ -46,6 +57,7 @@ app.use('/api/amenities', amenityRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Root – quick test
 app.get('/', (req, res) => {

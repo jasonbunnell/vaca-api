@@ -148,6 +148,12 @@ const propertySchema = new mongoose.Schema(
         'Property must have at least one host',
       ],
     },
+    /** Reference to Subscription doc tracking this property's plan. Auto-created free on insert. */
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subscription',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -183,6 +189,36 @@ propertySchema.pre('save', async function (next) {
  * Apply geocode + slug regen to findOneAndUpdate operations. Both reads from
  * `update.$set` and root-level fields, then writes back via `setUpdate`.
  */
+/**
+ * After creating a Property, ensure it has a free Subscription. We do this
+ * post-save (rather than pre) so the subscription has a stable propertyId to
+ * reference. Idempotent — if a Subscription already exists for this property,
+ * we just link it.
+ */
+propertySchema.post('save', async function (doc, next) {
+  try {
+    if (this.subscription) return next();
+    const Subscription = mongoose.models.Subscription || require('./Subscription');
+    const hostId = Array.isArray(doc.host) ? doc.host[0] : doc.host;
+    const existing = await Subscription.findOne({ propertyId: doc._id }).select('_id').lean();
+    const subId = existing
+      ? existing._id
+      : (await Subscription.create({
+          propertyId: doc._id,
+          hostId,
+          plan: 'free',
+          billingType: '',
+          status: 'active',
+        }))._id;
+    // Update without re-triggering hooks
+    await mongoose.models.Property.updateOne({ _id: doc._id }, { $set: { subscription: subId } });
+    doc.subscription = subId;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 propertySchema.pre('findOneAndUpdate', async function (next) {
   try {
     const update = this.getUpdate() || {};

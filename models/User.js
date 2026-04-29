@@ -57,6 +57,8 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpire: { type: Date, select: false },
+    /** Set the first time this user opens a Stripe Checkout Session; reused on subsequent purchases. */
+    stripeCustomerId: { type: String, default: '', index: true },
   },
   {
     timestamps: true,
