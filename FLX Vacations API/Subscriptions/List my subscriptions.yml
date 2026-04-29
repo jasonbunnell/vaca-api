@@ -1,0 +1,19 @@
+info:
+  name: List my subscriptions
+  type: http
+  seq: 1
+  tags:
+    - Subscriptions
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/subscriptions"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

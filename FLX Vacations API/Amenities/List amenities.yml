@@ -1,0 +1,17 @@
+info:
+  name: List amenities
+  type: http
+  seq: 1
+  tags:
+    - Amenities
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/amenities"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -23,6 +23,15 @@ settings:
   followRedirects: true
   maxRedirects: 5
 
+scripts:
+  postResponse: |-
+    // Capture JWT into the active environment so {{token}} is set automatically
+    // for every subsequent request. Run "Log in" once after switching env or
+    // restarting the server.
+    if (res.status === 200 && res.body && res.body.token) {
+      bru.setEnvVar("token", res.body.token);
+    }
+
 examples:
   - name: 200 Response
     description: Successful login

@@ -2,5 +2,5 @@ name: Local Dev Auth
 variables:
   - name: baseUrl
     value: http://localhost:7000
-  - secret: true
-    name: token
+  - name: token
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YjJiMDlmYTg1YmExOWZlZjg0MDAxOCIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3NzQ2OTgyMywiZXhwIjoxNzgwMDYxODIzfQ.xsYT_gO0cnNrO8bh03A-qYpX9mv4ytr6o-59PLmbHF4

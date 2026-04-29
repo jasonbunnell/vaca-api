@@ -31,4 +31,18 @@ const rateLimitAuthByIp = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket?.remoteAddress || '127.0.0.1'),
 });
 
-module.exports = { rateLimitByEmail, rateLimitAuthByIp };
+/**
+ * 5 registrations per hour per IP. More permissive than auth limits — a family
+ * sharing a connection should be able to make a few accounts — but tight enough
+ * that volumetric registration spam from a single source gets blocked.
+ */
+const rateLimitRegistrationByIp = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many accounts created from this network. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket?.remoteAddress || '127.0.0.1'),
+});
+
+module.exports = { rateLimitByEmail, rateLimitAuthByIp, rateLimitRegistrationByIp };

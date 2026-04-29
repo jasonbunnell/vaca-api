@@ -9,12 +9,20 @@ const {
 } = require('../controllers/user');
 const { protect, authorize } = require('../middleware/auth');
 const { handleValidationErrors } = require('../middleware/validate');
+const { rateLimitRegistrationByIp } = require('../middleware/rateLimit');
+const { honeypot } = require('../middleware/honeypot');
 const userValidators = require('../validators/user');
 
 router
   .route('/')
   .get(protect, authorize('admin'), getUsers)
-  .post(userValidators.createUser, handleValidationErrors, createUser);
+  .post(
+    rateLimitRegistrationByIp,
+    honeypot('website'),
+    userValidators.createUser,
+    handleValidationErrors,
+    createUser
+  );
 
 router
   .route('/:id')

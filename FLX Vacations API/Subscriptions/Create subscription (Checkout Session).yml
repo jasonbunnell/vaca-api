@@ -1,0 +1,78 @@
+info:
+  name: Create subscription (Checkout Session)
+  type: http
+  seq: 2
+  tags:
+    - Subscriptions
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/subscriptions"
+  body:
+    type: json
+    data: |-
+      {
+        "propertyId": "698e7a44750bbd787627ee73",
+        "plan": "boost",
+        "billingType": "annual"
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+examples:
+  - name: 200 Response (Boost annual)
+    description: Returns a Stripe Checkout Session URL
+    request:
+      url: "{{baseUrl}}/api/subscriptions"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "propertyId": "698e7a44750bbd787627ee73",
+            "plan": "boost",
+            "billingType": "annual"
+          }
+    response:
+      status: 200
+      statusText: OK
+      headers:
+        - name: Content-Type
+          value: application/json
+      body:
+        type: json
+        data: |-
+          {
+            "url": "https://checkout.stripe.com/c/pay/cs_test_...",
+            "sessionId": "cs_test_..."
+          }
+  - name: 200 Response (Pro lifetime)
+    description: One-time $600 lifetime purchase
+    request:
+      url: "{{baseUrl}}/api/subscriptions"
+      method: POST
+      body:
+        type: json
+        data: |-
+          {
+            "propertyId": "698e7a44750bbd787627ee73",
+            "plan": "pro",
+            "billingType": "lifetime"
+          }
+    response:
+      status: 200
+      statusText: OK
+      body:
+        type: json
+        data: |-
+          {
+            "url": "https://checkout.stripe.com/c/pay/cs_test_...",
+            "sessionId": "cs_test_..."
+          }

@@ -1,0 +1,30 @@
+info:
+  name: Update amenity (admin)
+  type: http
+  seq: 4
+  tags:
+    - Amenities
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/amenities/:id"
+  params:
+    - name: id
+      value: 0000000000000000aaaaaaaa
+      type: path
+  body:
+    type: json
+    data: |-
+      {
+        "displayName": "Hot tub (heated)",
+        "category": "luxury"
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

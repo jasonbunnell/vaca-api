@@ -1,0 +1,19 @@
+info:
+  name: Customer Portal session
+  type: http
+  seq: 4
+  tags:
+    - Subscriptions
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/subscriptions/portal-session"
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

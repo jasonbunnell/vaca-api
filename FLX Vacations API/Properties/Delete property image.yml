@@ -1,0 +1,26 @@
+info:
+  name: Delete property image
+  type: http
+  seq: 7
+  tags:
+    - Properties
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/properties/:id/images/:index"
+  params:
+    - name: id
+      value: 698e7a44750bbd787627ee73
+      type: path
+    - name: index
+      value: "0"
+      type: path
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

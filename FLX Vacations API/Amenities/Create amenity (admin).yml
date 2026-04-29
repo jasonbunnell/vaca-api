@@ -1,0 +1,30 @@
+info:
+  name: Create amenity (admin)
+  type: http
+  seq: 3
+  tags:
+    - Amenities
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/amenities"
+  body:
+    type: json
+    data: |-
+      {
+        "displayName": "Hot tub",
+        "name": "hot-tub",
+        "category": "luxury",
+        "description": "Outdoor hot tub for guests",
+        "color": "#1d4ed8",
+        "icon": "hot-tub"
+      }
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

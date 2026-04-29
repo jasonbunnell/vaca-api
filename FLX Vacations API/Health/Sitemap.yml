@@ -1,0 +1,17 @@
+info:
+  name: Sitemap
+  type: http
+  seq: 2
+  tags:
+    - Health
+
+http:
+  method: GET
+  url: "{{baseUrl}}/sitemap.xml"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

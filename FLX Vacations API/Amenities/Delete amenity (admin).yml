@@ -1,0 +1,23 @@
+info:
+  name: Delete amenity (admin)
+  type: http
+  seq: 5
+  tags:
+    - Amenities
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/amenities/:id"
+  params:
+    - name: id
+      value: 0000000000000000aaaaaaaa
+      type: path
+  auth:
+    type: bearer
+    token: "{{token}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

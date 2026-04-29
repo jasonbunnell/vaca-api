@@ -1,0 +1,21 @@
+info:
+  name: List amenities (grouped)
+  type: http
+  seq: 2
+  tags:
+    - Amenities
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/amenities?grouped=true"
+  params:
+    - name: grouped
+      value: "true"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

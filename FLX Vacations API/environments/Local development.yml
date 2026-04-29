@@ -2,3 +2,5 @@ name: Local development
 variables:
   - name: baseUrl
     value: http://localhost:7000
+  - secret: true
+    name: token
