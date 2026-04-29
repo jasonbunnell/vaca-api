@@ -1,8 +1,8 @@
 # Product Requirements Document — FLX Vacations
 
-**Version:** 0.8 (Draft)
+**Version:** 0.9 (Draft)
 **First draft:** Feb 12, 2026
-**This revision:** Apr 28, 2026
+**This revision:** Apr 29, 2026
 **Owner:** Jason
 
 ---
@@ -477,61 +477,44 @@ The pricing page has been rewritten to match the tier breakdown below. Boost and
 
 **Subscriptions are per-property. Each property has exactly one Subscription document.**
 
+**Design deviation from original PRD (locked Apr 28, 2026):** Use Stripe **Checkout** (`mode: 'payment'`) for the lifetime $600 charge instead of a custom Stripe Elements form. Rationale: same hosted Checkout flow as annual subs (one frontend integration), Stripe handles PCI / 3DS / wallets, no Stripe Elements wiring needed. The PRD's original "Payment Intent + client secret" plan for lifetime is superseded.
+
 #### Backend
 
-- **B-06.1 — Stripe setup:** Install `stripe` npm package. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to environment. Create Stripe Products and Prices for:
-  - Boost Annual Launch ($100/yr)
-  - Boost Annual Standard ($150/yr)
-  - Pro Annual Launch ($200/yr)
-  - Pro Annual Standard ($300/yr)
-  - Pro Lifetime Launch ($600 one-time)
-  - Store Price IDs in environment or a config file (not hardcoded in route logic).
+- **B-06.1 — Stripe setup:** **Done Apr 28, 2026.** `stripe` npm package installed. `config/stripe.js` exposes a lazy-loaded client + `resolvePriceId(plan, billingType)` keyed to `STRIPE_PRICE_*` env vars. Five env-var slots wired (Boost annual launch/standard, Pro annual launch/standard, Pro lifetime launch); test-mode prices created in Stripe dashboard and stored in `docs/pricing.md` alongside live IDs.
 
-- **B-06.2 — Stripe Customer creation:** When a host initiates a paid subscription for the first time, create a Stripe Customer and save `stripeCustomerId` on the User document. If the user already has a `stripeCustomerId`, reuse it.
+- **B-06.2 — Stripe Customer creation:** **Done Apr 28, 2026.** `getOrCreateStripeCustomer` in the subscription controller creates a Customer on first paid checkout, saves the ID on the User doc, and reuses it on subsequent purchases. Verified Apr 29 e2e: same `cus_...` reused across lifetime + annual upgrades for two different properties.
 
-- **B-06.3 — `POST /api/subscriptions` — create or upgrade subscription:**
-  - Request body: `{ propertyId, plan, billingType }`.
-  - Access: Authenticated host (must be in property.host array) or admin.
-  - If upgrading from Free to Boost or Pro: create Stripe Checkout Session for the chosen Price ID, return the session URL for frontend redirect.
-  - If `billingType === 'lifetime'`: create a Stripe one-time Payment Intent for $600, return client secret for frontend confirmation.
-  - On success (confirmed via webhook — see B-06.5): create or update the Subscription document.
+- **B-06.3 — `POST /api/subscriptions` — create or upgrade subscription:** **Done Apr 28, 2026.** Body `{ propertyId, plan, billingType }`. Access: host or admin. Returns `{ url, sessionId }` from a Stripe Checkout Session. Annual uses `mode: 'subscription'`; lifetime uses `mode: 'payment'` (one-time). Metadata `{propertyId, hostId, plan, billingType}` is mirrored onto the Checkout Session, the Subscription, and the PaymentIntent so the webhook can resolve our DB row from any event.
 
-- **B-06.4 — `POST /api/subscriptions/:id/cancel` — cancel subscription:**
-  - Access: The host whose User._id === subscription.hostId, or admin.
-  - For annual plans: call Stripe `subscriptions.update({ cancel_at_period_end: true })`. Set `cancelAtPeriodEnd: true` on the Subscription document. The property keeps its plan until `currentPeriodEnd`.
-  - For lifetime plans: lifetime subscriptions cannot be canceled (return 400 with message "Lifetime subscriptions cannot be canceled").
-  - For free plans: return 400 with message "Free listings cannot be canceled".
+- **B-06.4 — `POST /api/subscriptions/:id/cancel` — cancel subscription:** **Done Apr 28, 2026.** Annual: calls `stripe.subscriptions.update({ cancel_at_period_end: true })`, sets `cancelAtPeriodEnd: true` and `canceledAt: now()` on the doc. Lifetime → 400 "Lifetime subscriptions cannot be canceled." Free → 400 "Free listings cannot be canceled." Verified Apr 29 e2e.
 
-- **B-06.5 — Stripe webhook handler `POST /api/subscriptions/webhook`:**
-  - Access: Public but verified using `stripe.webhooks.constructEvent` with `STRIPE_WEBHOOK_SECRET`.
-  - Handle these events:
-    - `checkout.session.completed`: Create/activate the Subscription document; update `property.subscription`.
-    - `invoice.payment_succeeded`: Update `currentPeriodStart`, `currentPeriodEnd`, set `status: 'active'`.
-    - `invoice.payment_failed`: Set `status: 'past_due'`. (Consider email notification — out of scope for now.)
-    - `customer.subscription.deleted`: Set `status: 'canceled'`, downgrade property plan to `free`.
-    - `payment_intent.succeeded` (for lifetime): Activate lifetime Subscription document.
+- **B-06.5 — Stripe webhook handler `POST /api/subscriptions/webhook`:** **Done Apr 28, 2026.** Mounted with `express.raw({ type: 'application/json' })` BEFORE `express.json()` so signature verification gets the raw body. Subscribes to:
+  - `checkout.session.completed` — primary creation event for both annual and lifetime; upgrades the existing free Subscription doc in place.
+  - `customer.subscription.updated` — period rollover, status changes, `cancel_at_period_end` toggle (covers what the PRD originally split across `invoice.payment_succeeded`).
+  - `customer.subscription.deleted` — terminal cancel; reverts the doc to `free` (never deletes).
+  - `invoice.payment_failed` — sets `status: 'past_due'`.
 
-- **B-06.6 — Update payment method:** Do not build a custom payment UI. Use the Stripe Customer Portal.
-  - `POST /api/subscriptions/portal-session`: Creates a Stripe Billing Portal session for the authenticated host's `stripeCustomerId`. Returns a redirect URL. The Stripe portal allows the host to update payment method, view invoices, and manage subscriptions.
+- **B-06.6 — Update payment method:** **Done Apr 28, 2026.** `POST /api/subscriptions/portal-session` creates a Stripe Billing Portal session for the authenticated user's `stripeCustomerId`. Returns `{ url }`. Stripe Portal handles card updates, invoice history, and self-serve cancellation for annual subs. (Lifetime purchases don't appear in the Portal because they aren't recurring — by Stripe design.)
 
-- **B-06.7 — Plan enforcement on property reads:** When serving property data, the API should gate plan-specific fields. If `subscription.plan === 'free'`: omit `host.email`, `host.phone`, `airBnb`, `vrbo`, and rate fields. If `subscription.plan === 'boost'`: include contact info, AirBnB/VRBO links, and rate range. If `subscription.plan === 'pro'`: include all fields including OwnerRez booking and calendar data.
+- **B-06.7 — Plan enforcement on property reads:** **Done Apr 28, 2026.** `utils/propertySerializer.js` exports `toPublicProperty(property, viewer)` that gates `host.email`, `host.phone`, `airBnb`, `vrbo`, and rate fields when the property's plan is `free` and the viewer isn't admin or host. Wired into all four public Property read paths in the controller. Owner/admin views always see the full doc.
 
-- **B-06.8 — `GET /api/subscriptions` — host's own subscriptions:**
-  - Access: Authenticated.
-  - Returns all Subscription documents where `hostId === req.user._id`, populated with property title and main image.
+- **B-06.8 — `GET /api/subscriptions` — host's own subscriptions:** **Done Apr 28, 2026.** Returns all Subscription docs where `hostId === req.user._id`, populated with `propertyId.title slug images lake`.
+
+**End-to-end test (Apr 29, 2026):** Local Stripe CLI forwarded webhooks to vaca-api running on :7000. Verified: free → Boost annual upgrade (recurring sub, period dates set, customer created); free → Pro lifetime upgrade (one-time, `isLifetime: true`, no period); cancel annual (`cancelAtPeriodEnd: true`, status stays `active` until `currentPeriodEnd`); cancel lifetime → 400; Customer Portal session opens and shows the cancel-pending annual sub correctly. **Production webhook setup pending** — Stripe Dashboard endpoint at `flxvacations.com/api/subscriptions/webhook` to be created when we deploy and run the prod e2e test.
 
 #### Frontend
 
-- **F-06.1 — Upgrade flow:** On the pricing page, once billing is live (replacing "Coming soon"), clicking "Upgrade to Boost" or "Upgrade to Pro" opens a modal or page that:
+- **F-06.1 — Upgrade flow:** Pending. On the pricing page, once billing is live (replacing "Coming soon"), clicking "Upgrade to Boost" or "Upgrade to Pro" opens a modal or page that:
   1. If the host has multiple properties, asks which property to upgrade.
-  2. Shows a plan summary (price, features).
-  3. Redirects to Stripe Checkout (annual) or shows a Stripe Elements card form (lifetime one-time).
+  2. For Pro, asks annual vs lifetime.
+  3. Calls `POST /api/subscriptions`, then `window.location.assign(url)` to send the user to Stripe Checkout.
 
-- **F-06.2 — Stripe Customer Portal link:** In the host dashboard (see F-07), provide a "Manage billing" button per property subscription. Clicking it calls `POST /api/subscriptions/portal-session` and redirects to the Stripe Customer Portal. The portal handles: update card, view invoices, cancel (for annual plans that aren't already set to cancel).
+- **F-06.2 — Stripe Customer Portal link:** **Done Apr 29, 2026.** "Manage billing" button on each dashboard property card (see F-07.2) calls `POST /api/subscriptions/portal-session` and redirects via `window.location.assign(url)`. Button is hidden for Free and Lifetime properties — Free has nothing to manage, Lifetime isn't a recurring subscription so the Portal won't expose it.
 
-- **F-06.3 — Subscription status on property cards in dashboard:** Each property card in the host dashboard shows its current plan badge (Free / Boost / Pro), billing renewal date (for annual), or "Lifetime" badge. If `cancelAtPeriodEnd: true`, show "Cancels on [date]" in orange.
+- **F-06.3 — Subscription status on property cards in dashboard:** **Done Apr 29, 2026.** Plan badge: gray "Free" / blue "Boost" / amber "Pro" / amber "Pro · Lifetime". Status line: "Free listing" / "Renews on [date]" / "Cancels on [date]" (orange) / "Lifetime — never expires" (gold) / "Past due — update payment method" (red, bold). All driven from the populated `subscription` ref on each property doc.
 
-- **F-06.4 — Downgrade messaging:** If a subscription is canceled and the property reverts to Free, the host should see a notification banner on their dashboard: "Your [Property Name] subscription ended. Upgrade to Boost or Pro to restore premium features."
+- **F-06.4 — Downgrade messaging:** Pending. Trigger: when a host's subscription transitions from `boost`/`pro` back to `free` (via webhook on `customer.subscription.deleted`), show a banner on the dashboard: "Your [Property Name] subscription ended. Upgrade to Boost or Pro to restore premium features." Will need a small "recently downgraded" flag we can detect on dashboard load — likely a `downgradedAt` timestamp added to the Subscription doc on the deleted handler. Out of scope for v0.9.
 
 ---
 
@@ -560,29 +543,17 @@ The host dashboard is the authenticated area where a host manages all their prop
 
 #### Frontend
 
-- **F-07.1 — Host dashboard page `/dashboard`:**
-  - Access: Authenticated hosts only. Redirect non-hosts to homepage.
-  - Layout: Page header "My Properties" with a "+ Add Property" button that links to `/properties/create`.
-  - Displays one card per property the host owns.
+- **F-07.1 — Host dashboard page `/dashboard`:** **Minimal version done Apr 29, 2026.** Page rebuilt at `app/pages/dashboard.vue`. Auth-gated: shows a "Please log in" prompt with link if `!isLoggedIn`. Header: "My Properties" + "+ Add Property" CTA. SEO: `noindex` via `useSeo`. **Outstanding:** the PRD originally specified "redirect non-hosts to homepage" — currently the page shows the auth prompt for any not-logged-in user and the empty-state "you don't have any properties yet" for users with no properties. That's softer than a redirect; revisit when host vs. user role distinction matters more.
 
-- **F-07.2 — Property card in dashboard:** Each card shows:
-  - Main image (3:2 aspect ratio thumbnail).
-  - Property title (links to property profile page).
-  - City, lake.
-  - Beds / baths.
-  - Plan badge: "Free", "Boost", or "Pro" with appropriate color (gray / blue / gold).
-  - Renewal or status line: "Renews Jan 15, 2027" / "Lifetime" / "Cancels Apr 30, 2026" (in orange) / "Past due" (in red).
-  - **Views this month** metric (number + small sparkline chart if > 0 data).
-  - Action buttons: "Edit listing" → `/properties/edit/[id]`, "View profile" → `/properties/[slug]`, "Manage billing" → Stripe portal (F-06.2).
+- **F-07.2 — Property card in dashboard:** **Done Apr 29, 2026** *(metrics deferred)*. Each card shows: main image, title, beds/baths, city/lake, plan badge, status line, and three action buttons (View / Edit / Manage billing). View links to `/properties/[slug]`, Edit to `/properties/edit/[id]`, Manage billing opens the Stripe Customer Portal (see F-06.2). **Deferred to F-07 full build:** the per-property "Views this month" metric + sparkline — depends on B-07.1 (view tracking endpoint) which is still pending.
 
-- **F-07.3 — Add another property:** The "+ Add Property" button on the dashboard links to `/properties/create`. When the host creates a new property, they are redirected back to the dashboard where the new property card appears. The new property starts on the Free plan by default.
+- **F-07.3 — Add another property:** **Done Apr 29, 2026.** "+ Add Property" button in the dashboard header links to `/properties/create`. New property starts on Free plan via the Property model's `post('save')` hook (auto-creates a `free` Subscription doc).
 
-- **F-07.4 — Dashboard summary row (multi-property hosts):** At the top of the dashboard, above the property cards, show a summary row:
-  - Total properties.
-  - Total views this month (sum across all properties).
-  - For hosts with any Pro property: total upcoming bookings (sum from OwnerRez).
+- **F-07.4 — Dashboard summary row (multi-property hosts):** Pending. Total properties, total views this month, total upcoming bookings (Pro hosts). Depends on view-tracking and OwnerRez integration.
 
-- **F-07.5 — View tracking trigger:** On every `GET /api/properties/:id` page load (the public property profile page), fire a background `POST /api/properties/:id/views` request from the frontend. Do this without blocking page render — fire-and-forget in `onMounted`.
+- **F-07.5 — View tracking trigger:** Pending. Depends on B-07.1.
+
+**Frontend technical note (Apr 29, 2026):** initial implementation used `useFetch` with `headers: () => authHeaders()`, which fired during component setup before the auth composable's `onMounted` had hydrated the JWT from `localStorage` — every dashboard load 401'd. Fixed by switching to a manual `$fetch` call inside an `onMounted`-triggered `load()` function, which evaluates `authHeaders()` at request time. This matches the pattern every other auth-required page in the app (`login.vue`, `account.vue`, `properties/create.vue`) already uses for action-style calls.
 
 ---
 
@@ -777,6 +748,8 @@ Implement in this sequence. Each step builds on or enables the next.
 | BUG-08 | Footer only links to 4 of 11 Finger Lakes | **By design** — footer permanently links to the top 4 lakes (Seneca, Cayuga, Keuka, Canandaigua) by listing volume; remaining 7 lakes accessible via /homes lake selector | F-01, F-10 |
 | BUG-09 | Google Map missing on `/homes` and `/homes/[lake]` pages | **Fixed Apr 25, 2026** — API key set in PM2 env; hover sync, InfoWindow, and lake centering implemented; blank grey map caused by zero-height CSS circular dependency (`lg:h-full` with `self-start` parent) fixed with `lg:h-[520px]` | F-05 |
 | BUG-10 | `/events` page returned 404 on initial client-side navigation, but worked on full-page refresh. Hero images on `/` had the same latent issue | **Fixed Apr 27, 2026** — Root cause: production Nginx forwards `/api/**` to vaca-api on `:7000`, swallowing the Nuxt server proxy at `/api/events` before it could reach Nuxt on `:2000`. SSR worked because Nuxt's in-memory `$fetch` bypassed Nginx; client-side navigation hit the public URL and 404'd. Fix: moved Nuxt server proxies out of `/api/` namespace into `/_proxy/` so they fall through to Nuxt without an Nginx exception. `server/api/events.get.ts` → `server/routes/_proxy/events.get.ts`; `server/api/hero-images.get.ts` → `server/routes/_proxy/hero-images.get.ts`; deleted unused `server/api/events-image.get.ts`. Page consumers updated. `routeRules` in `nuxt.config.ts` re-narrowed to per-prefix vaca-api routes only. `docs/nginx-api-proxy.conf` updated with the new convention. | — |
+| BUG-11 | Registration spam — bot was hammering `POST /api/users` and creating accounts with random-string firstName/lastName, gibberish phone, and Gmail dot-trick variations of one inbox. Endpoint had no rate limit, no captcha, no email verification | **Fixed Apr 29, 2026** — Three layers of defense added: (1) `rateLimitRegistrationByIp` in `middleware/rateLimit.js` — 5/hour per IP. (2) `middleware/honeypot.js` — checks for a non-empty `website` field; if filled, logs via `securityLogger` and returns generic 400. Hidden honeypot input added to `app/pages/signup.vue` (CSS-positioned off-screen, `aria-hidden`, `tabindex="-1"`, `autocomplete="off"`). (3) `app.set('trust proxy', 1)` in `server.js` so the rate limiter keys on the real client IP behind Nginx instead of `127.0.0.1`. Existing fake users to be cleaned up manually by the user. CAPTCHA + email verification deferred. | — |
+| BUG-12 | `/dashboard` returned `Not authorized, token missing` for every visit, even when the user was logged in. Vaca-api logs showed no incoming request reaching the auth middleware | **Fixed Apr 29, 2026** — Root cause: original dashboard used `useFetch(..., { headers: () => authHeaders() })`, but `useFetch` captures `headers` at component setup time, before the `useAuth` composable's `onMounted` hydrates the JWT from `localStorage`. The fetch went out with an empty `Authorization` header. Fix: switched to manual `$fetch` inside an `onMounted`-triggered `load()` function so `authHeaders()` is called at request time. Same pattern every other auth-required call in the app uses. | F-07 |
 
 ---
 
@@ -831,3 +804,5 @@ STRIPE_PRICE_PRO_LIFETIME_LAUNCH=price_xxxx
 | Apr 27, 2026 | 0.8a | Jason | **vaca-api refactors landed (commit `9fb767a`):** added `asyncHandler` wrapper + central `errorHandler` middleware (replaces ~25 try/catch blocks); extracted `assertPropertyAccess` helper (replaces 4 duplicated isAdmin/isHost blocks); extracted `populateProperty` helper (consolidates 6+ populate chains); split `extractToken`/`verifyAndLoadUser` shared between `protect` and `optionalProtect`; deduped slug + geocode `pre('findOneAndUpdate')` hooks in Property model; cleaned up `createUser` validator dup-checks and forced `role: 'user'` to close a privilege escalation hole. **B-10.1, B-10.2 done:** `/sitemap.xml` and `/robots.txt` endpoints added in vaca-api with `PUBLIC_SITE_URL` env var; mounted at root in `server.js`. Net –115 LOC across touched files. |
 | Apr 27, 2026 | 0.8b | Jason | **BUG-10 fixed:** `/events` 404 on initial client navigation. Moved Nuxt server proxies out of the `/api/**` Nginx-claimed namespace into `/_proxy/**` (events, hero-images). Deleted unused events-image proxy. `routeRules` re-narrowed to per-prefix vaca-api routes. `docs/nginx-api-proxy.conf` updated with the new convention header. **F-10 frontend complete:** `useSeo` + `useJsonLd` composables created in `composables/useSeo.ts`; applied to all 10 public pages. Property profile uses reactive computed values + `LodgingBusiness` JSON-LD; homepage gets `Organization` JSON-LD. Default head fallback added in `nuxt.config.ts`. `runtimeConfig.public.siteUrl` added (override via `NUXT_PUBLIC_SITE_URL`). `public/robots.txt` rewritten to disallow auth pages, /api/, /_proxy/, and reference the sitemap. Nuxt server route at `server/routes/sitemap.xml.get.ts` proxies `flxvacations.com/sitemap.xml` to vaca-api. F-10.1–F-10.6 closed. F-10.7 closed by design. |
 | Apr 28, 2026 | 0.8 | Jason | Removed Services from PRD, main menu, and footer — focusing on Experiences for now. Deleted `app/pages/services/index.vue`. PRD F-10 sections updated to reflect completion across this revision. |
+| Apr 28, 2026 | 0.9a | Jason | **F-06 Stripe backend complete (B-06.1–B-06.8).** Built `Subscription` model + `stripeCustomerId` on User + `subscription` ref on Property with `post('save')` auto-create-free hook. `controllers/subscription.js` with five endpoints (list, create, cancel, portal-session, webhook). `config/stripe.js` lazy client + price-ID resolver. Webhook handler mounted with `express.raw` BEFORE `express.json` for signature verification. Plan-gating `utils/propertySerializer.js` wired into all public Property reads. `optionalProtect` added to public Property GET routes so authenticated owners/admins see unredacted data. `scripts/backfill-free-subscriptions.js` written to seed free Subscriptions for legacy Properties. **Design deviation from original PRD:** lifetime $600 charge uses Stripe Checkout (`mode: 'payment'`) instead of Stripe Elements + Payment Intent — simpler, same hosted UX as annual. Bruno collection extended with Subscriptions + Amenities folders + missing routes. |
+| Apr 29, 2026 | 0.9b | Jason | **Registration spam mitigation deployed (BUG-11):** `rateLimitRegistrationByIp` (5/hour per IP), `honeypot('website')` middleware on `POST /api/users`, hidden honeypot input on `signup.vue`, `app.set('trust proxy', 1)` so the rate limiter keys on real client IP behind Nginx. **F-06 backend verified end-to-end locally** via Stripe CLI: free→Boost annual upgrade, free→Pro lifetime upgrade, cancel annual, cancel-lifetime guard, Customer Portal session — all green. Test-mode prices created in Stripe (parallel to live IDs in `pricing.md`). **Minimal `/dashboard` shipped (F-07.1–F-07.3, F-06.2, F-06.3):** subscription-aware property cards, plan badges (Free/Boost/Pro/Lifetime), status lines (Renews/Cancels/Lifetime/Past due), Manage Billing button → Stripe Portal, `?upgrade=success` banner, `+ Add Property` header CTA. Hit and fixed BUG-12 along the way (useFetch captured stale auth headers at setup; switched to `$fetch` in `onMounted`). **Pending for tomorrow:** F-06.1 pricing page upgrade flow, production webhook + production end-to-end test. F-07.4/F-07.5 (metrics + view tracking) and F-06.4 (downgrade banner) deferred. |

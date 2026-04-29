@@ -22,6 +22,13 @@ const { errorHandler } = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// In production, vaca-api runs behind Nginx. Trust the immediate upstream's
+// X-Forwarded-For header (set by Nginx in docs/nginx-api-proxy.conf) so that
+// `req.ip` is the real client address instead of 127.0.0.1. Required for
+// per-IP rate limiting to work correctly. The `1` means "trust 1 hop" — safer
+// than `true`, which would trust any spoofed XFF chain.
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 
