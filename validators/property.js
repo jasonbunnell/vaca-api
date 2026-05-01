@@ -38,6 +38,30 @@ const vacaRentalSoftwareValidator = body('vacaRentalSoftware')
   })
   .withMessage('Invalid vacation rental software');
 
+const otaLinksValidator = body('otaLinks')
+  .optional()
+  .isArray({ max: 10 })
+  .withMessage('otaLinks must be an array of up to 10 entries')
+  .custom((arr) => {
+    if (!Array.isArray(arr)) return false;
+    for (const entry of arr) {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error('Each otaLinks entry must be an object');
+      }
+      if (!Property.OTA_PROVIDERS.includes(entry.ota)) {
+        throw new Error(`Invalid OTA provider: ${entry.ota}`);
+      }
+      const url = String(entry.url || '').trim();
+      if (!/^https?:\/\/.+/i.test(url)) {
+        throw new Error('Each otaLinks entry must include a valid http(s) URL');
+      }
+      if (entry.label != null && String(entry.label).length > 60) {
+        throw new Error('OTA label must be 60 characters or fewer');
+      }
+    }
+    return true;
+  });
+
 const createProperty = [
   body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }),
   body('slug').optional().trim().isLength({ max: 200 }),
@@ -49,6 +73,7 @@ const createProperty = [
   body('guests').isInt({ min: 1 }).withMessage('Guests (max occupancy) must be at least 1'),
   lakeValidator,
   vacaRentalSoftwareValidator,
+  otaLinksValidator,
   amenitiesBodyValidator,
   body('host')
     .optional()
@@ -70,6 +95,7 @@ const updateProperty = [
   body('guests').optional().isInt({ min: 1 }).withMessage('Guests must be at least 1'),
   lakeValidator,
   vacaRentalSoftwareValidator,
+  otaLinksValidator,
   amenitiesBodyValidator,
   body('host')
     .optional()

@@ -3,8 +3,8 @@
  * by the property's subscription plan (PRD B-06.7).
  *
  * Tiers:
- *   - free   → omit host email/phone, airBnB, vrbo, rate fields
- *   - boost  → include contact info, AirBnB/VRBO links, rate range
+ *   - free   → omit host email/phone, otaLinks (AirBnB/VRBO/etc.), rate fields
+ *   - boost  → include contact info, otaLinks, rate range
  *   - pro    → all of the above + OwnerRez fields when present
  *
  * `viewer` is { user } from the request (or null for public). Admins and the
@@ -60,8 +60,7 @@ function toPublicProperty(property, viewer) {
   const plan = planOf(plain);
 
   if (plan === 'free') {
-    delete plain.airBnb;
-    delete plain.vrbo;
+    delete plain.otaLinks;
     delete plain.rate;
     delete plain.rateFrom;
     delete plain.rateTo;

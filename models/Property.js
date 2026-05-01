@@ -56,6 +56,46 @@ const VACA_RENTAL_SOFTWARE = [
   'other',
 ];
 
+const OTA_PROVIDERS = [
+  'airbnb',
+  'vrbo',
+  'booking',
+  'houfy',
+  'tripadvisor',
+  'direct',
+  'other',
+];
+
+const otaLinkSchema = new mongoose.Schema(
+  {
+    ota: {
+      type: String,
+      enum: OTA_PROVIDERS,
+      required: [true, 'OTA provider is required'],
+    },
+    url: {
+      type: String,
+      required: [true, 'OTA url is required'],
+      trim: true,
+      validate: {
+        validator(v) {
+          if (!v) return false;
+          return /^https?:\/\/.+/i.test(String(v).trim());
+        },
+        message: 'OTA url must be a valid http(s) URL',
+      },
+    },
+    /** Optional display label, used when ota === 'other' or 'direct' */
+    label: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
 const locationSchema = new mongoose.Schema(
   {
     coordinates: {
@@ -161,6 +201,18 @@ const propertySchema = new mongoose.Schema(
       type: String,
       enum: VACA_RENTAL_SOFTWARE,
       default: 'none',
+    },
+    /**
+     * External booking links (AirBnB, VRBO, Booking.com, etc.). Gated to
+     * Boost+ tiers in propertySerializer.js — stripped for guests on Free.
+     */
+    otaLinks: {
+      type: [otaLinkSchema],
+      default: [],
+      validate: [
+        function (v) { return !v || v.length <= 10; },
+        'Property cannot have more than 10 OTA links',
+      ],
     },
     /** Reference to Subscription doc tracking this property's plan. Auto-created free on insert. */
     subscription: {
@@ -272,4 +324,5 @@ propertySchema.pre('findOneAndUpdate', async function (next) {
 const Property = mongoose.model('Property', propertySchema);
 Property.FINGER_LAKES = FINGER_LAKES;
 Property.VACA_RENTAL_SOFTWARE = VACA_RENTAL_SOFTWARE;
+Property.OTA_PROVIDERS = OTA_PROVIDERS;
 module.exports = Property;
