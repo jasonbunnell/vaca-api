@@ -1,0 +1,690 @@
+# Product Requirements Document (PRD)
+
+# FLX vacations
+
+**Version:** 0.1 (Draft)  
+**First draft:** Feb 12, 2026
+**Latest update:** Mar 12, 2026
+**Owner:** [Jason] 
+
+---
+
+## 1. Executive Summary
+
+We are building the API for FLX Vacations.  FLX Vacations is a site similar to AirBNB.  The site allows short term property owners in the Finger Lakes region of New York list their properties to rent to vacationers in the Finger Lakes region of New York.  Similar to AirBNB, vacationers can browse properties on a map, by criteria, by amenities, by price, etc.  Each property should have a unique listing.  The listing should include a property title, number of bedrooms, number of bathrooms, description, amenities, etc.  There should be a collection of properties, a collection of users.  Each property should be associated with a user that is of type host.
+
+---
+
+## 2. Problem Statement
+
+The problem for hosts is that AirBNB and VRBO are expensive and have commissions more than 13%, are large and unfocused with properties all over the world and do not offer much insite to a specific tourist region by providing information on places to go, events happening in the tourist region, or the ability to book caterers, guides, etc.
+
+The problem for guests is that AirBNB and VRBO are the most comprehensive source for vacation rental properties by having more property listings than other options.
+
+### 2.2 Pain points
+
+- Hosts pay high commissions to AirBNB and VRBO
+- No comprehensive local listings for vacation rentals
+- Little other vacation information like local Events, Experiences, or Services
+- No way to find properties to book directly and avoid commissions
+
+### 2.3 Opportunity
+
+- Partner with Hospitality Property Management like Hostaway, Lodgify, or OwnerRez, HostAway, or Lodgify where I would get an affiliate marketing commission with customers that sign up with my code and link, hosts can book directly, and guests can get a discounted stay by booking direct.
+- Offer early bird deal for 1 year and lifetime deals at 50% and another 50% if you sign up for vacation rental property management affiliate link for a total of 75% off for the first 3 months.
+
+---
+
+## 3. Solution Overview
+
+### 3.1 Solution summary
+
+This site will be similar to AirBNB but allow the traveler to book directly using integration with [OwnerRez](OwnerRez.md).  Each property can sync calendar and pricing using [OwnerRez API](https://www.ownerrez.com/support/articles/api-overview).  If the host does not use [OwnerRez], their contact information, website, and links to AirBNB and VRBO can also be used.
+
+### 3.2 User / personas
+
+
+| Stakeholder           | Value                                                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Guest]               | A Guest is typically from outside the Finger Lakes region of NY and on a leisure vacation.                                                    |
+| [Host]                | A Host is someone in the Finger Lakes region of New York that is offering a property as a short term rental.                                  |
+| [FLXcompass.com]      | Providing local events via the [jables-api](../../jables-api)                                                                                 |
+| [Experience-Provider] | An indivual or company in the Finger Lakes offering entertaining experiences like a fishing guide, boat rentals, wine tour, or a boat cruise. |
+| [Service-Provider]    | An indivual or company in the Finger Lakes offering services like catering, peronal shopping, cleaning, photography, or rentals               |
+
+
+### 3.3 Out of scope (for this PRD)
+
+- a booking engine
+- dynamic pricing
+
+---
+
+## 4. Sitewide Technical Architecture & Design
+
+### 4.1 High-level architecture
+
+#### Backend
+
+- JavaScript
+- Express
+- Mongo DB
+- Digital Ocean
+  - Hosting
+  - [Spaces Object Storage](/docs/spaces-object-storage.md)
+
+#### Frontend
+
+- Javascript
+- Vue / Nuxt
+
+### 4.3 Data model
+
+#### Property
+
+
+| Field                      | Type              | Description                                                                                                                                                                              |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| title                      | String            | Property title                                                                                                                                                                           |
+| slug                       | String            | Unique slug for URL                                                                                                                                                                      |
+| bedrooms                   | Number            | Number of bedrooms property has                                                                                                                                                          |
+| bathrooms                  | Number            | Number of bathrooms property has                                                                                                                                                         |
+| description                | String            | Description of property                                                                                                                                                                  |
+| address                    | String            | Address like 67 Castle Street, Unit 411, Geneva, NY 14456 that generates location object                                                                                                 |
+| location                   | Object            | Location object of property generated by geocode method                                                                                                                                  |
+| locaction.formattedAddress | String            | generated by geocode method                                                                                                                                                              |
+| location.street            | String            | generated by geocode method                                                                                                                                                              |
+| location.city              | String            | generated by geocode method                                                                                                                                                              |
+| location.state             | String            | generated by geocode method                                                                                                                                                              |
+| location.zipcode           | String            | generated by geocode method                                                                                                                                                              |
+| location.country           | String            | generated by geocode method                                                                                                                                                              |
+| lake                       | String            | Enumerated list of Finger Lakes the property is nearest                                                                                                                                  |
+| amenities                  | array of ObjectId | References to [Amenity](/models/Amenity.js); see §5.7                                                                                                                                    |
+| pms                        | object            | enumerated list of Property Management Software like "OwnerRez", "Hostaway", "Lodgify"                                                                                                   |
+| pms.id                     | String            | [OwnerRez](OwnerRez.md) ID from their API                                                                                                                                                |
+| images                     | array of objects  | images of the property stored in [Spaces Object Storage](/docs/spaces-object-storage.md)                                                                                                 |
+| images[].imageName         | String            | name of single image using image naming methodology                                                                                                                                      |
+| images[].roomType          | String            | Enumerated list, default "Additional Images"                                                                                                                                             |
+| images[].description       | String            | Description of property photo                                                                                                                                                            |
+| images[].isMain            | Boolean           | One image may be indicated to be Main Image, by default the first image uploaded                                                                                                         |
+| host                       | array User ID(s)  | host(s) of property that is tied to [User](/models/User.js) ID. There may be 1 or more hosts for a property and additional property hosts can be added by admin or current property host |
+| createdAt                  | Date              | date property was created                                                                                                                                                                |
+| updatedAt                  | Date              | last time property was updated                                                                                                                                                           |
+
+
+#### User
+
+
+| Field        | Type   | Description                            |
+| ------------ | ------ | -------------------------------------- |
+| firstName    | String | User's first name, required            |
+| lastName     | String | User's last name, required             |
+| email        | String | User's email, validate email, required |
+| role         | String | Enum list of user, host, admin         |
+| subscription | String | Current plan                           |
+| password     | String | Hashed password, required              |
+| createdAt    | Date   | Date User was created                  |
+| updatedAt    | Date   | Date User updated User data            |
+
+
+### 4.4 Security & Authorization
+
+#### Route security (reference)
+
+Route-level access is defined below. Keep this table in sync with implementation and `openapi.yaml`.
+
+
+| Route                     | Method      | Access                                                            |
+| ------------------------- | ----------- | ----------------------------------------------------------------- |
+| /api/health               | GET         | Public                                                            |
+| /api/auth/login           | POST        | Public                                                            |
+| /api/auth/forgot-password | POST        | Public                                                            |
+| /api/auth/reset-password  | POST        | Public                                                            |
+| /api/users                | POST        | Public (registration)                                             |
+| /api/properties           | GET         | Public (optional `amenities`, `amenityMatch`, `lake`, pagination) |
+| /api/properties/:id       | GET         | Public                                                            |
+| /api/amenities            | GET         | Public (`includeInactive=true` requires admin JWT)                |
+| /api/amenities            | POST        | Admin only                                                        |
+| /api/amenities/:id        | PUT, DELETE | Admin only                                                        |
+| /api/auth/me              | GET         | Authenticated                                                     |
+| /api/auth/change-password | POST        | Authenticated                                                     |
+| /api/properties/my        | GET         | Authenticated (host list)                                         |
+| /api/users/:id            | GET, PUT    | Self or admin                                                     |
+| /api/users                | GET         | Admin only                                                        |
+| /api/users/:id            | DELETE      | Admin only                                                        |
+| /api/properties           | POST        | Host or admin                                                     |
+| /api/properties/:id       | POST        | Host or admin                                                     |
+| /api/properties/:id       | PUT, DELETE | Host or admin                                                     |
+| /api/upload/image         | POST        | Host or admin                                                     |
+
+
+### 4.3 Sitewide Design
+
+- Design should use Tailwind CSS
+- Site should be responsive with large, medium, and small screen designs.
+
+#### Description
+
+Every user should have a password and the backend should hash these values so they are not exposed in the database.  Every user has a password; the backend hashes passwords so they are not stored in plain text.  Every user can request a password reset; reset tokens are single-use and time-limited; login and password-reset endpoints are rate-limited.  Production uses HTTPS only.  Authenticated requests use a JWT Every user should be able to reset their password.  Admins should be able to CRUD on both properties and users collections with the exception of user email and password.  Users collection has an enumerated list [ user | host | admin ].  If a user creates a property, their role is changed from user to host and their user Object Id value is placed in the properties host field.  Any user whose _id is in property.host array may CRUD that property and upload, edit, or delete its images.  The site should protect against Cross Site Scripting, but allow 3rd party tools like Google Analytics.  Data protection: All request inputs are validated and sanitized; the API does not use raw user input in queries (NoSQL injection prevention). User-supplied content is not rendered as HTML by the API; the frontend mitigates XSS via escaping and a Content-Security-Policy that allows trusted third-party scripts (e.g. Google Analytics). Secrets (JWT secret, database URL, object storage keys) are stored in environment variables or a secrets manager, not in source code.
+
+#### Completed Success Criteria
+
+- A user should be able to request a **Password Reset**. Reset tokens are single-use and time-limited to expire in 1 hour. Rate limiting with max 3 per hour per user (by email for login/forgot-password; by IP for reset-password).
+- A user can update their own profile data (name, phone, password, etc.). A user cannot change their email. Only admin can CRUD all users and user profile data (name, phone); admin cannot change email or password.
+- Admins can GET all users via /api/users, GET a single user via /api/users/:id, and GET themselves via /api/auth/me.
+- API allows requests only from configured frontend origins and localhost for dev (CORS_ORIGINS).
+- Authenticated requests use JWT in the Authorization header (Bearer token). Production traffic uses HTTPS only (deployment concern).
+- Property ownership is determined by user's _id in property's host array.
+- Public routes: GET properties, GET property (and /api/health, auth login/forgot-password/reset-password, POST /api/users for registration).
+- Authenticated routes: GET /api/auth/me, change-password, GET /api/properties/my, GET/PUT /api/users/:id (self or admin), POST/PUT/DELETE property, POST /api/upload/image. Only admin and property's host (user in host array) can access property and image mutation routes.
+- API validates and sanitizes inputs (body, query, params) with express-validator; Mongoose used for queries (no raw user input; NoSQL injection prevention).
+- User-supplied text is not rendered as HTML by the API; XSS is mitigated on the frontend via escaping and CSP (frontend responsibility).
+- Secrets (JWT secret, DB URL, Spaces keys, etc.) are kept in environment variables, not in source code or client.
+- Rate limiting on login and forgot-password (3 per hour per email) and reset-password (3 per hour per IP). API returns 429 with message. Frontend may show orange warning icon and notification.
+- Log sensitive actions: login (success/failure), password reset request, password change, user create/update/delete, property create/update/delete.
+- In updateUser, email and password are always removed from the update object (for both self and admin). No one can change email or password via PUT; password changes only via change-password and reset-password.
+
+#### Outstanding Success Criteria
+
+- The frontend uses a strict Content-Security-Policy but allows scripts from trusted domains (frontend implementation).
+- Allow GET events from jables-api (e.g. proxy route or frontend calls jables-api; not yet in vaca-api).
+- Dependencies kept up to date; known high/critical vulnerabilities addressed (e.g. npm audit, periodic updates).
+
+---
+
+## 5. Features
+
+### Implementation order (recommended)
+
+
+| Step | Section                                                    | Rationale                                                                                               |
+| ---- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1    | **5.6** Properties — location, geocoding, `beds`, `guests` | API + model changes power card copy (`city`, `stateCode`, beds line) and map pins for **5.3**.          |
+| 2    | **5.5** Vacation Rental Summary Cards                      | Reusable `VacaRentSumCard` (or equivalent) used on **5.3** `/homes` and `/homes/[slug]`, homepage, etc. |
+| 3    | **5.3** Homes & Finger Lake pages                          | Builds on **5.5** + **5.6**; filters and map need `location` / `lake` and card fields.                  |
+
+
+Sections **5.1**, **5.2**, and **5.4** remain independent; order above applies to **5.6 → 5.5 → 5.3** only.
+
+### 5.1 Images
+
+#### Description
+
+The backend should be able to accept an upload of file type JPG, JPEG, PNG, GIF, and WEBP.  File name is changed using naming convention "photo_[Property ID]_XX.[file type]".  For example, the first image in the array might be `photo_698e7a44750bbd787627ee73_01.jpg`.  The backend should ensure images are no larger than 2MB in size.  The backend should push the image to [spaces-object-storage](/docs/spaces-object-storage.md) and add the file name to the images field array.  Each property can have up to 50 images.  User should be able to click [Upload a file]() and select an image from their computer or drag and drop image into Cover photo box.  
+
+#### Design
+
+- In the Featured Vacation Rentals section, the grid is a grid of cards with properties.  These cards use `**VacaRentSumCard`** ([vacation-rental-summary-cards.md](vacation-rental-summary-cards.md)).  The main image uses a **3:2** aspect ratio (long edge horizontal), matching the vacation rental summary card spec.
+- Main menu is currently 1280 pixels wide in lg screen size.  Make other sections on the same 1280 pixels wide on lg screens.  For example, Property Page 5 Image Collage looks to be 848 pixels wide.  property.description seems to be 848 pixels wide.  Sections on index.vue page seem to be 1232.
+- If user clicks on image in 5 Image Collage, the user goes to the section that photo is in.  Example:  If the user clicks a picture and that picture is a room type = "Kitchen", the user should go to the Property Photos Page to the Kitchen section.
+
+#### Completed Success Criteria
+
+- Only admin or host (user ObjectId in property host array) can upload or edit an image or its values to the property.  Any user can view images (API: upload/update/delete restricted; GET property public).
+- When user uploads an image, the image file name is changed using the naming convention `photo_[Property ID]_XX.[file type]`, the image field array is updated with the new entry (url, room, caption, main), and the file is uploaded to [spaces-object-storage](/docs/spaces-object-storage.md).
+- Image object includes a **main** field (API field name `isMain`). The first image uploaded is main (TRUE). Admin or host for that property can change which image is main; the API updates the previous main to FALSE and the selected image to TRUE (via PUT property with images array or future PATCH). Only one image per property is main at a time.
+- The default room type is "Additional Photos" until the host has selected otherwise.
+- The image description (caption) is optional and is used as the img alt value on the frontend.
+- Spaces Object Storage has a properties folder.  Images uploaded for a property are stored in the properties folder.  Example: `properties/photo_698e7a44750bbd787627ee73_01.jpg`.
+- API enforces max 50 images per property, 2MB max file size, and allowed types JPG, JPEG, PNG, GIF, WEBP; returns clear errors when limits or type are exceeded. Admin or host can delete an image; the file is removed from Spaces and the entry is removed from the property images array (DELETE /api/properties/:id/images/:index).
+- Decrease the height of small images in 5 Image Collage so the width of the large image is half of the width of the width of two small images and the two small images aspect ratio is roughly 4:3.
+- On pages/properties/[id].vue page, remove sections between 5 photo collage and property.title H1.
+- The frontend should use the Form Layout for a Cover photo.  Text in box should say "[Upload a file]() or drag and drop PNG, JPG, JPEG, GIF, WEBP up to 2MB".
+- The frontend homepage should add an H2 in the Featured Vacation Rentals section "Featured Vacation Rentals".
+- From /properties/edit/[Property Id] page, host or admin can upload a photo using the [Upload a file]() link or drag and drop a PNG, JPG, JPEG, GIF, WEBP up to 2MB (X/50).  X is the current number of photos.  If host or admin clicks Upload a file link or drags a file to the box and the number of photos is already = 50, a warning notification pops up with an orange warning icon and "**You already have 50 images!**  
+Remove another image to add another image file."  If image file > 2MB, "**Image file size too large!  
+Image file sizes must be 2MB or smaller."  If an invalid image file type is attempted to upload, "**Images must be a valid image file type!  
+Please try a JPG, JPEG, GIF, or WEBP image file type."  Multi-file upload is not supported.
+- User should be able to add photos when creating a listing from the /properties/create page.
+- The Property Profile page shows a collage of 5 photos, the Main Image larger on the left and 4 smaller on the right (2x2 grid size = the larger size).  Over the bottom-right image, a "Show all photos" button links to the Property Photos Page.
+- The Bedroom X and Bathroom X options in the room type list depend on property.bedrooms and property.bathrooms.  Example: if bedrooms is 3, show Bedroom 1, Bedroom 2, Bedroom 3.
+
+### Deployment / environment (action required)
+
+If you see browser errors such as `[GET] "https://flxvacations.com/api/properties/...": <no response> Failed to fetch` or similar for `/api/upload/image` or `/api/properties`, the frontend is calling the API at the wrong origin or the API is unreachable. **You need to:** (1) Set **NUXT_PUBLIC_API_BASE** in production to your vaca-api base URL (e.g. `https://your-vaca-api.example.com`), or (2) Configure your host (e.g. nginx) to proxy `/api` to the vaca-api server and keep **NUXT_PUBLIC_API_BASE** as same-origin. Ensure vaca-api CORS allows your frontend origin (see PRD 4.4).
+
+**Google Maps / Geocoding:** Enable billing, **Geocoding API** (server) and **Maps JavaScript API** (site map in §5.3), and use key restrictions that match how each key is used — see [google-maps-geocoding-setup.md](google-maps-geocoding-setup.md). A browser-restricted key used for server-side geocoding will fail (`REQUEST_DENIED`).
+
+### 5.2 Property Images Page
+
+#### Description
+
+This page should display **all** images for a property on a page.  There should be a Image Nav Bar at the top of the page that sticks to the top like a submenu.  In the Image Nav Bar, each room type should be listed with the room type name and one image from with that room type.  Below the Image Nav Bar, **all** images for that property should be displayed in sections where each room type where there are images with that room type are displayed.  User can click a room type from the Image Nav Bar to jump to that section.  This should be laid out similar to [Himrod House - Photos](https://www.himrodhouse.com/himrod-house-orp5b6ae0bx#room-479395).  Below the larger image should be the description.
+
+#### Success Criteria - Outstanding
+
+- The Property Photos Page has a Image Nav Bar at the with a thumbnail and room type name.  The top Image Nav Bar is sticky to the top of the page, below the main menu.  The Image Nav Bar should have one title and image for each room type that has an image.  When a user clicks a room type image or title, the user should jump down to that section of the Image Page section.
+- The Property Image Page should have **every** photo listed on that page grouped in sections by room type.  The images should be large or medium.  Below each image should be a P tag with the description.  The Room Type should be an H3.  If a user clicks a room type from the Image Nav Bar, the page should jump to that same section.  Example:  If "Additional Photos" is the last section at the bottom of the page and user clicks "Additional Photos" in the Image Nav Bar, he should jump to that section of the page.
+- Images should be arranged in a 2 column grid.  Example: if the room types and image count are Exterior (3), Kitchen (2), Bedroom 1 (2), Bathroom 1, and Additional Photos (4), there should be 5 sections starting with Exterior with 3 exterior phtos, then Kitchen with 2 kitchen photos, etc.  If the user clicks Additional Photos from the Image Nav Bar, the page should jump to the Additional Photos section.
+- If a user clicks any image, the view should change to an individual image.  The background of the whole page should black with the only thing visible on the page is the full size image, as large as possible to fit on the screen with as little padding as possible.  There should be a right arrow, left arrow to go to the next or preview image in the array.  And only one "X" to close the Individual Image view and return to the Property Image Page.  The arrows should move through all the property images in one long sequence.
+- Deleting images by admin or host will not be done from this page.
+
+### 5.3 Homes page & [Finger Lake](finger-lake.md) Home Page
+
+**Depends on:** **5.5** and **5.6** (implement those first).
+
+#### Description
+
+The Homes page or /homes should list all the properties.  Clicking Homes in main menu should go to the /homes page.  User should be able to filter this list by lake, city, number of rooms, number of baths, amenities.  From the homepage, if a user clicks a lake card from the Explore the Finger Lakes, the user should go to corresponding [Finger Lake](finger-lake.md) page.  From any page, if a user clicks 'Seneca Lake', 'Cayuga Lake', 'Keuka Lake', or 'Canandaigua Lake' in footer, they should go to the corresponding [Finger Lake](finger-lake.md) page. For example: if a user clicks Seneca Lake, the user should go to /homes and list all the properties where the lake = "Seneca Lake".  Likewise there should be a similar Home page for each lake in [Finger Lake](finger-lake.md).  The main Homes Page should have an H2 "Finger Lakes Vacation Homes".  Each [Finger Lake](finger-lake.md) page should have an H2 "[Finger Lake](finger-lake.md) Vacation Homes" where lake = [Finger Lake](finger-lake.md).  The URL for the main Homes page should be /homes and each [Finger Lake](finger-lake.md) page should be /homes/[slug] where slug is the [Finger Lake](finger-lake.md) slug and this page should be filtered so all the homes on this [Finger Lake](finger-lake.md) should be where property lake = [Finger Lake](finger-lake.md).  /homes and homes/[Finger Lakes](finger-lake.md) should be a grid of [Vacation Rental Summary Cards](vacation-rental-summary-cards.md).  EXAMPLE: /homes/seneca-lake should be filtered to show properties where lake='Seneca Lake'.
+
+#### Success Criteria
+
+- Create a page to display all homes (`/homes` and `/homes/[slug]`).
+- Page should have filter bar at the top (lake filter implemented; city, rooms, baths, amenities — outstanding).
+- Page should have two columns: grid of [Vacation Rental Summary Cards](vacation-rental-summary-cards.md) and a Google Map.  On narrow screens, the map stacks above the cards (full width).
+- Properties on that page should be plotted on the Google Map.
+- Page should have pagination if the number of properties is > 20.
+
+### 5.4 Lake SVGs for Homepage (COMPLETED)
+
+#### Status = COMPLETED
+
+#### Description
+
+On the homepage in the "Explore the Finger Lakes" section, there are boxes with different shades of blue with Lake Name and a brief 2 - 3 word description.  I would like to add a blue-100 SVG of the lake.  In the public/lake-svg directory there are SVGs for each lake.  "Seneca Lake" = Seneca-Lake.svg.  Make the SVGs blue-100.
+
+### 5.5 Vacation Rental Summary Cards (COMPLETED)
+
+**Status:** COMPLETE  
+**Depends on:** **5.6** for `location.city`, `location.stateCode`, and `beds` (and related fields) on the card.
+
+#### Description
+
+See details in [Vacation Rental Summary Cards](vacation-rental-summary-cards.md).
+
+#### Success Criteria
+
+- Reusable `VacaRentSumCard` on homepage (Featured Vacation Rentals), `/homes`, `/homes/[slug]`.
+- Main image **3:2**, title **H3** (`text-md`), beds/bedrooms line, City ST from `location`; missing lines hidden.
+- Stacked Tailwind card, rounded corners, link to property profile.
+
+### 5.6 Properties Collection Update
+
+#### Description
+
+Update Properties model for database collection.  Add new fields.
+
+#### Tasks
+
+- Create new squareFeet field as a number.  Update the create and update property pages to let Hosts input "The number of square feet inside the home."  Value has a minimum of 1 and a maximum of 50000.
+- Create new totalRooms field as a number.  Update the create and update property pages to let Hosts input "The number of total rooms inside the home including bedrooms, kitchen, living room, etc."
+- Make Bedrooms, Bathrooms, Beds, Guests, Lake, Property Address, Title, and Description as required fields.
+- Remove "features" array from the model (removed from API, frontend, and seed data).
+- Create new airBnb field as a String.  The Create and Update pages should say, "Link to your AirBNB property profile page." Validate as URL.  Not required.
+- Create new vrbo field as a String.  The Create and Update pages should say, "Link to your VRBO property profile page." Validate as URL.  Not required.
+- Enforce required fields on new properties, admin will update existing properties.
+
+---
+
+### 5.7 Create Amenities Collection
+
+#### Description
+
+Consider if we should create an Amenities collection to make it easier to add or update amenities.
+
+- property create/edit forms (host selects from predefined amenities),
+- property detail display,
+- `/homes` and `/homes/[slug]` filtering.
+
+Use Amenities as the source of truth for display text, category, and active/inactive status.
+
+#### Data model
+
+- `Amenity` model fields:
+  - `displayName` (String, required)
+  - `name` (String, required, unique, slug from `displayName`)
+  - `color` (String, optional)
+  - `icon` (String, optional)
+  - `category` (String, required enum: `location`, `essentials`, `kitchen`, `outside`, `entertainment`, `luxury`, `environmentally-friendly`)
+  - `description` (String, optional)
+  - `isActive` (Boolean, required, default `true`)
+  - `createdAt` (Date)
+  - `updatedAt` (Date)
+- `Property.amenities` should store `Amenity` references (`ObjectId[]`).
+- On reads, frontend should receive enough amenity data to render grouped pills (`id`, `name`, `displayName`, `category`, optional `color`/`icon`).
+
+#### Endpoint definitions
+
+- `GET /api/amenities`
+  - Access: Public
+  - Returns active amenities by default (`isActive=true`).
+  - Optional query:
+    - `includeInactive=true` (admin only)
+    - `grouped=true` (returns grouped by category)
+- `POST /api/amenities`
+  - Access: Admin only
+  - Creates new amenity. `name` slug is generated from `displayName`.
+- `PUT /api/amenities/:id`
+  - Access: Admin only
+  - Updates amenity fields (`displayName`, `color`, `icon`, `category`, `description`, `isActive`).
+- `DELETE /api/amenities/:id`
+  - Access: Admin only
+  - Soft delete behavior recommended by setting `isActive=false` so historical property data remains consistent.
+- `GET /api/properties`
+  - Access: Public
+  - Add amenities filter support:
+    - `amenities=wifi,washer`
+    - `amenityMatch=all|any` (default `all`)
+  - `all`: property must contain every requested amenity.
+  - `any`: property must contain at least one requested amenity.
+
+#### Tasks
+
+- Create `Amenity` model and migration/seed from [Amenities](amenities.md).
+- Update `Property` model to store amenities as `ObjectId[]` references.
+- Add amenities API routes/controllers with access control rules above.
+- Update property create/edit API validation to only accept active amenity IDs.
+- Update `/api/properties` filtering with `amenities` + `amenityMatch`.
+- Normalize duplicates in seed list (e.g. avoid overlapping synonyms unless intentionally mapped).
+
+#### Acceptance criteria
+
+- `GET /api/amenities` returns active amenities and includes category + display fields required for grouped UI rendering.
+- Admin can create, update, and deactivate amenities from API; non-admin users cannot mutate amenities.
+- Hosts can select only predefined active amenities when creating/updating properties.
+- Property detail pages display amenities grouped by category using the amenity metadata (not hardcoded strings).
+- `/homes` and `/homes/[slug]` filtering by amenities works with both `amenityMatch=all` and `amenityMatch=any`.
+- Adding or recategorizing an amenity in the Amenities collection is reflected automatically in filters and host forms without code changes.
+
+### 5.8 Google Map on /homes page & [Finger Lake](finger-lake.md) Home Page
+
+#### Description
+
+Map shows "Set `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` in your environment to show the map."  Google API key is in [.env](../.env) as `GEOCODER_API_KEY`.  Update variable to fix map on /homes and /homes/[Finger Lake](finger-lake.md).
+
+#### Tasks
+
+- Make sure variable `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` is used for public, browser-restricted by referrer + API scope situations.
+- Make sure Google API key is not exposed and is only displayed in .env
+- Fix so map displays on /homes
+- Fix so map displays on /homes/[Finger Lake](finger-lake.md)
+- Design:
+  - body should be 2 columns, first column is a 1x20 grid of Vacation Rental Summary Cards.  Second column should be a Google Map.
+  - column with grid of Vacation Rental Summary Cards should be about 30% of width.
+  - column with Google Map should be about 70% of width.
+  - on mobile, display map only.  on desktop, list on left and sticky map on right.
+
+### 5.9 Grouped Pill Selector Component (Amenities)
+
+#### Description
+
+Create a reusable grouped amenity selector UI for both:
+
+- property create/edit pages (host selects property amenities), and
+- `/homes` filter UI (guest selects search amenities).
+
+Use two components:
+
+1. **AmenityGroup**: renders one category header and its active amenity pills.
+2. **AmenitiesGroupList**: renders all categories in a fixed display order and composes `AmenityGroup`.
+
+This should be one shared pattern so behavior and styling remain consistent across forms and filters.
+
+#### Group order
+
+`essentials` → `location` → `kitchen` → `outside` → `entertainment` → `luxury` → `environmentally-friendly`
+
+#### UI behavior
+
+- Each amenity renders as a button/pill/badge with `displayName`.
+- Unselected: neutral style.
+- Selected: inverse/contrast style with clear selected state.
+- Click toggles selected/unselected.
+- Disabled state for inactive amenities (or hide inactive by default).
+- Keyboard accessible (`button`, focus styles, and `aria-pressed`).
+
+#### Data contract
+
+- Input data comes from `GET /api/amenities`.
+- Components should group by `category` dynamically and render by fixed group order.
+- Unknown categories (if any) render last under `Other` (defensive fallback).
+
+#### Tasks
+
+- Build `AmenityGroup` component.
+- Build `AmenitiesGroupList` component that controls group order and composes `AmenityGroup`.
+- Use shared components in both host property form and homes filter bar.
+- Wire selected amenity IDs/slugs to create/update property payload.
+- Wire selected amenity IDs/slugs to homes search query params.
+
+#### Acceptance criteria
+
+- Same grouped selector is used in property create/edit and homes filter UI (no duplicated custom implementations).
+- Group order matches spec exactly.
+- Selecting/deselecting amenities updates selected state immediately and persists in parent form/filter state.
+- Filters return properties matching selected amenities according to `amenityMatch`.
+- Host form submits only valid amenity values from the predefined list.
+
+## 6. Implementation Plan
+
+### 6.1 Kickoff - COMPLETE
+
+### 6.2 Front End Creation - COMPLETE
+
+### 6.3 Authentication & Security
+
+#### Completed Items
+
+#### Outstanding Items
+
+- [ ]
+
+### User Dashboard Page
+
+- User should see a list of their properties that have a card with one photo of the property, property title, and Edit and Delete icons and name.
+
+### Admin
+
+- Admin should be able to click an circle edit button on any Property Profile page to edit the property.
+
+### Pages - Edit Property
+
+### Services
+
+- Create Service Model with fields
+  - Name
+  - Description
+  - Price
+  - Requested date
+
+### 6.1 Phases
+
+
+| Phase | Name                      | Scope                                                    | Target      |
+| ----- | ------------------------- | -------------------------------------------------------- | ----------- |
+| 1     | Kickoff                   | API scaffold, models, routes, seeder                     | Done        |
+| 2     | Front End Creation        | Nuxt app, Tailwind, homepage, pages, FLXvacations design | Done        |
+| 3     | Test                      | Test locally, fix issues, extend as needed               | In progress |
+| 4     | Authentication & Security | Auth, roles, host/admin rules                            | Done        |
+| 5     | Deploy                    | Production deploy                                        | Done        |
+
+
+### 6.2 Phase 1 — Kickoff
+
+**Goals:**
+
+- Set up files and folders
+- Set up entry point: server.js
+- Set up models
+- Set up controllers
+- Set up routes
+- Run locally and be able to hit route in browser
+
+**Deliverables:**
+
+- Set up files and folders
+- Create MVP for Properties
+- Create MVP for Users
+- Run locally and be able to hit route in browser (see README: `npm run dev`, then open /api/health, /api/properties, /api/users)
+
+**Dependencies / blockers:**
+
+- 
+
+### 6.3 Phase 2 — Front End Creation
+
+**Goals:**
+
+- Create Nuxt front end that consumes vaca-api (properties, users)
+- Tailwind-based layout similar to AirBNB: near-white background, FLXvacations text logo
+- Homepage property grid (image, name, price range); search by amenities and date
+- Nav: Homes, Events, Experiences, Services; hamburger with “Log in or sign up”, “Become a host”
+- Pages: Sign up, Create property listing, Events (flxcompass.com API)
+
+**Deliverables:**
+
+- Create project folder for frontend and install Nuxt
+- Install modules (e.g. Tailwind) and configure
+- Homepage: property grid (image, name, price range); search (amenities, date picker)
+- Layout: FLXvacations logo, near-white background, nav (Homes, Events, Experiences, Services), hamburger (Log in or sign up, Become a host)
+- Sign up page: First Name, Last Name, Email, Phone, Password
+- Create a property listing page
+- Events page (uses flxcompass.com API) — placeholder; wire flxcompass.com when API is ready
+
+**Dependencies / blockers:**
+
+- vaca-api running (Phase 1); flxcompass.com API for Events
+
+### 6.4 Phase 3 — Test
+
+**Goals:**
+
+- Test API and front end locally
+- Fix issues and extend models/routes as needed
+
+**Deliverables:**
+
+- Test locally
+- Fix issues
+- Extend models as needed
+- Extend routes as needed
+
+**Dependencies / blockers:**
+
+- 
+
+### 6.5 Phase 4 — Authentication & Security
+
+**Goals:**
+
+- User, Host, Admin can log in
+- Host can only create, update, delete their own properties
+- Admin can CRUD any user or property
+
+**Deliverables:**
+
+- Implement security (auth middleware, JWT or session)
+- User, Host, Admin can log in (login page wired to API)
+- Host can only create, update, delete their own properties
+- Admin can CRUD any user or property
+
+### 6.6 Phase 5 — Deploy
+
+**Goals:**
+
+- Deploy API and front end to production
+
+**Deliverables:**
+
+- Deploy API to production server
+- Deploy front end (e.g. Vercel, Netlify, or same host)
+- Configure env and domains
+
+**Dependencies / blockers:**
+
+- (Updated as changes are made.)
+
+### 6.7 Dependencies (external)
+
+- 
+
+- 
+
+### 6.8 Risks & mitigations
+
+
+| Risk | Impact | Mitigation |
+| ---- | ------ | ---------- |
+|      |        |            |
+
+
+---
+
+## 7. Success Metrics
+
+
+
+### 7.1 Business / product metrics
+
+
+| Metric | Target | How we measure |
+| ------ | ------ | -------------- |
+|        |        |                |
+|        |        |                |
+
+
+### 7.2 User / experience metrics
+
+
+| Metric | Target | How we measure |
+| ------ | ------ | -------------- |
+|        |        |                |
+|        |        |                |
+
+
+### 7.3 Technical / quality metrics
+
+
+| Metric                        | Target | How we measure |
+| ----------------------------- | ------ | -------------- |
+| Uptime / availability         |        |                |
+| Latency / performance         |        |                |
+| Error rate                    |        |                |
+| Test coverage (if applicable) |        |                |
+
+
+### 7.4 Launch criteria
+
+We consider the release successful when:
+
+- Error: [POST] "[https://flxvacations.com/api/upload/image](https://flxvacations.com/api/upload/image)": 413; error when admin tried to add 5th photo.
+- 
+- 
+
+---
+
+## 8. Known Issues
+
+### 8.1 Known Issues - Oustanding
+
+- When running in Dev mode, Error: Error: [GET] "[http://localhost:7000/api/properties](http://localhost:7000/api/properties)":  Failed to fetch on initial load, but loads when refresh.  No error on backend api in console logged.
+- When running in Dev mode, Error: Error: [GET] "[http://localhost:7000/api/properties/the-onyx-chalet-by-keuka-lake](http://localhost:7000/api/properties/the-onyx-chalet-by-keuka-lake)":  Failed to fetch on initial load, but loads when refresh. No error on backend api in console logged.
+- As an Admin, when I click edit on a property page I get warning "You don’t have permission to edit this property."  As an Admin, I should be able to edit any page.
+- As an Admin, I was not able to add an image to listing, I got "Not authorized, user not found"
+
+## Appendix
+
+### A. Glossary
+
+
+| Term | Definition |
+| ---- | ---------- |
+|      |            |
+
+
+### B. References
+
+- 
+
+- 
+
+- 
+
+### C. Changelog
+
+
+| Date | Version | Author | Changes             |
+| ---- | ------- | ------ | ------------------- |
+|      | 0.1     |        | Initial scaffolding |
+
+

@@ -29,6 +29,15 @@ const lakeValidator = body('lake')
   })
   .withMessage('Invalid lake');
 
+const vacaRentalSoftwareValidator = body('vacaRentalSoftware')
+  .optional()
+  .trim()
+  .custom((v) => {
+    if (v === '' || v == null) return true;
+    return Property.VACA_RENTAL_SOFTWARE.includes(v);
+  })
+  .withMessage('Invalid vacation rental software');
+
 const createProperty = [
   body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }),
   body('slug').optional().trim().isLength({ max: 200 }),
@@ -39,6 +48,7 @@ const createProperty = [
   body('beds').isInt({ min: 0 }).withMessage('Beds must be a non-negative integer'),
   body('guests').isInt({ min: 1 }).withMessage('Guests (max occupancy) must be at least 1'),
   lakeValidator,
+  vacaRentalSoftwareValidator,
   amenitiesBodyValidator,
   body('host')
     .optional()
@@ -59,6 +69,7 @@ const updateProperty = [
   body('beds').optional().isInt({ min: 0 }).withMessage('Beds must be a non-negative integer'),
   body('guests').optional().isInt({ min: 1 }).withMessage('Guests must be at least 1'),
   lakeValidator,
+  vacaRentalSoftwareValidator,
   amenitiesBodyValidator,
   body('host')
     .optional()

@@ -47,6 +47,15 @@ const FINGER_LAKES = [
   'Other',
 ];
 
+const VACA_RENTAL_SOFTWARE = [
+  'none',
+  'Hostaway',
+  'Lodgify',
+  'OwnerRez',
+  'Streamline',
+  'other',
+];
+
 const locationSchema = new mongoose.Schema(
   {
     coordinates: {
@@ -147,6 +156,11 @@ const propertySchema = new mongoose.Schema(
         },
         'Property must have at least one host',
       ],
+    },
+    vacaRentalSoftware: {
+      type: String,
+      enum: VACA_RENTAL_SOFTWARE,
+      default: 'none',
     },
     /** Reference to Subscription doc tracking this property's plan. Auto-created free on insert. */
     subscription: {
@@ -257,4 +271,5 @@ propertySchema.pre('findOneAndUpdate', async function (next) {
 
 const Property = mongoose.model('Property', propertySchema);
 Property.FINGER_LAKES = FINGER_LAKES;
+Property.VACA_RENTAL_SOFTWARE = VACA_RENTAL_SOFTWARE;
 module.exports = Property;
