@@ -5,6 +5,7 @@ const { logAction } = require('../utils/securityLogger');
 const { assertPropertyAccess } = require('../utils/propertyAccess');
 const asyncHandler = require('../utils/asyncHandler');
 const { httpError } = require('../middleware/errorHandler');
+const { CACHE_CONTROL, VARIANT_WIDTHS, variantKey, buildVariants } = require('../utils/imageVariants');
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const BUCKET = process.env.SPACES_BUCKET_NAME || process.env.SPACE_BUCKET_NAME || 'flxvaca';
@@ -120,9 +121,34 @@ exports.uploadImage = asyncHandler(async (req, res) => {
       Key: key,
       Body: req.file.buffer,
       ContentType: req.file.mimetype,
+      CacheControl: CACHE_CONTROL,
       ACL: 'public-read',
     })
   );
+
+  // Responsive webp variants (PERF-1). Best-effort: a failure here must not
+  // fail the upload — the frontend falls back to the original via onerror.
+  try {
+    const variants = await buildVariants(req.file.buffer);
+    for (const v of variants) {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: BUCKET,
+          Key: variantKey(key, v.width),
+          Body: v.data,
+          ContentType: 'image/webp',
+          CacheControl: CACHE_CONTROL,
+          ACL: 'public-read',
+        })
+      );
+    }
+  } catch (err) {
+    logAction('image-variants-failed', {
+      userId: req.user._id,
+      success: false,
+      detail: { propertyId: property._id, key, error: err.message },
+    });
+  }
 
   const url = `${SPACES_CDN}/${key}`;
   const isMain = property.images.length === 0;
@@ -151,4 +177,12 @@ exports.deleteFromSpacesByUrl = async (imageUrl) => {
   const key = keyFromImageUrl(imageUrl);
   if (!key) return;
   await deleteFromSpaces(key);
+  // Clean up responsive variants; ignore missing ones (pre-PERF-1 uploads).
+  for (const width of VARIANT_WIDTHS) {
+    try {
+      await deleteFromSpaces(variantKey(key, width));
+    } catch {
+      /* variant may not exist */
+    }
+  }
 };
