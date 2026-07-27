@@ -96,6 +96,18 @@ const otaLinkSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const seoMetaSchema = new mongoose.Schema(
+  {
+    /** <title> tag override. Google shows ~60 chars; hard cap 70. */
+    title: { type: String, trim: true, maxlength: 70, default: '' },
+    /** Meta description override. Google shows ~155-160 chars; hard cap 170. */
+    description: { type: String, trim: true, maxlength: 170, default: '' },
+    source: { type: String, enum: ['ai', 'manual'], default: 'manual' },
+    generatedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const locationSchema = new mongoose.Schema(
   {
     coordinates: {
@@ -213,6 +225,15 @@ const propertySchema = new mongoose.Schema(
         function (v) { return !v || v.length <= 10; },
         'Property cannot have more than 10 OTA links',
       ],
+    },
+    /**
+     * Search-engine metadata (PRD-summer-26 SEO-2). Written manually by a
+     * host/admin or by the AI meta pipeline (SEO-3). Public on all tiers;
+     * frontend falls back to title/description when absent.
+     */
+    seoMeta: {
+      type: seoMetaSchema,
+      default: undefined,
     },
     /** Reference to Subscription doc tracking this property's plan. Auto-created free on insert. */
     subscription: {
