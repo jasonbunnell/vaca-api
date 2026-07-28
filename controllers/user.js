@@ -2,6 +2,7 @@ const User = require('../models/User');
 const { logAction } = require('../utils/securityLogger');
 const asyncHandler = require('../utils/asyncHandler');
 const { httpError } = require('../middleware/errorHandler');
+const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -47,6 +48,18 @@ exports.createUser = asyncHandler(async (req, res) => {
     role: 'user',
   });
   logAction('user-create', { userId: user._id, success: true });
+
+  // Welcome email (CRM-1) — best-effort, never blocks or fails registration.
+  sendEmail({
+    to: user.email,
+    subject: 'Welcome to FLX Vacations',
+    text:
+      `Hi ${user.firstName || 'there'},\n\n` +
+      `Welcome to FLX Vacations — the commission-free way to find and book Finger Lakes vacation rentals.\n\n` +
+      `Have a property on one of the lakes? List it free: ${(process.env.PUBLIC_SITE_URL || 'https://flxvacations.com').replace(/\/+$/, '')}/pricing\n\n` +
+      `Questions? Just reply to this email.\n\n— FLX Vacations`,
+  }).catch((err) => console.error('[email] welcome send failed:', err.message));
+
   res.status(201).json(user);
 });
 

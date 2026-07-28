@@ -15,6 +15,7 @@ const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const uploadRoutes = require('./routes/upload');
 const subscriptionRoutes = require('./routes/subscription');
+const contactRoutes = require('./routes/contact');
 const { handleWebhook } = require('./controllers/subscription');
 const { getSitemap, getRobotsTxt } = require('./controllers/sitemap');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -65,6 +66,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Root – quick test
 app.get('/', (req, res) => {

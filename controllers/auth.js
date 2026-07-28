@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { logAction } = require('../utils/securityLogger');
 const asyncHandler = require('../utils/asyncHandler');
 const { httpError } = require('../middleware/errorHandler');
+const sendEmail = require('../utils/sendEmail');
 
 function signToken(user) {
   const payload = { id: user._id, role: user.role };
@@ -92,25 +93,45 @@ exports.changePassword = asyncHandler(async (req, res) => {
   res.json({ message: 'Password updated successfully.' });
 });
 
-// @desc    Forgot password – request reset token (no email sent yet; token returned for dev)
+// @desc    Forgot password – email a reset link (CRM-1)
 // @route   POST /api/auth/forgot-password
 // @access  Public
+// Always responds with the same generic 200 so the endpoint can't be used to
+// enumerate accounts, and NEVER returns the token (it's only in the email).
 exports.forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
     throw httpError(400, 'Email is required.');
   }
+  const genericResponse = { message: 'If that email exists, a reset link has been sent.' };
   const emailNorm = String(email).trim().toLowerCase();
   const user = await User.findOne({ email: emailNorm });
   if (!user) {
-    throw httpError(404, 'No user with that email.');
+    logAction('forgot-password', { success: false, detail: { email: emailNorm, reason: 'no-user' } });
+    return res.json(genericResponse);
   }
   const token = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
   user.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
   await user.save({ validateBeforeSave: false });
+
+  const siteUrl = (process.env.PUBLIC_SITE_URL || 'https://flxvacations.com').replace(/\/+$/, '');
+  const resetUrl = `${siteUrl}/reset-password?token=${token}`;
+  const result = await sendEmail({
+    to: user.email,
+    subject: 'Reset your FLX Vacations password',
+    text:
+      `Hi ${user.firstName || 'there'},\n\n` +
+      `We received a request to reset your FLX Vacations password. Use the link below within 1 hour:\n\n` +
+      `${resetUrl}\n\n` +
+      `If you didn't request this, you can safely ignore this email — your password is unchanged.\n\n` +
+      `— FLX Vacations`,
+  });
+  if (result?.skipped && process.env.NODE_ENV !== 'production') {
+    console.log(`[dev] SMTP unconfigured — reset URL for ${user.email}: ${resetUrl}`);
+  }
   logAction('forgot-password', { userId: user._id, success: true });
-  res.json({ message: 'If that email exists, a reset link would be sent.', resetToken: token });
+  res.json(genericResponse);
 });
 
 // @desc    Reset password with token from forgot-password
